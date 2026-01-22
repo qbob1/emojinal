@@ -1,4 +1,4 @@
-# Emojinal - Game Engine Development Plan
+# Emojinal - Game Engine Development Plan (Web Version)
 
 ## Overview
 A multiplayer grid-based tile placement game where players strategically place emoji tiles with unique abilities to control territory and maximize their score.
@@ -30,126 +30,175 @@ A multiplayer grid-based tile placement game where players strategically place e
 **Priority: CRITICAL**
 
 #### 1.1 Tile System
-```typescript
-interface Tile {
-  emoji: string;           // The emoji character
-  owner: PlayerId;         // Which player owns this tile
-  type: TileType;          // Category (claim, movement, destruction, etc.)
-  effects: Effect[];       // List of effects this tile can trigger
-  metadata?: {             // Optional data for tile state
-    turnCount?: number;    // For evolving tiles (plants)
-    evolutionStage?: string;
-    isPermanent?: boolean; // For ♾️
-    isNegated?: boolean;   // For ➖
+```javascript
+class Tile {
+  constructor(emoji, owner, type, effects = []) {
+    this.emoji = emoji;           // The emoji character
+    this.owner = owner;            // Which player owns this tile
+    this.type = type;              // Category (claim, movement, destruction, etc.)
+    this.effects = effects;        // List of effects this tile can trigger
+    this.metadata = {              // Optional data for tile state
+      turnCount: 0,                // For evolving tiles (plants)
+      evolutionStage: null,
+      isPermanent: false,          // For ♾️
+      isNegated: false             // For ➖
+    };
   }
 }
 
-enum TileType {
-  CLAIM,        // 🚩, ♾️, ☠️, 💩
-  MOVEMENT,     // ↔️, ↕️, ➡️, ⬅️, ⬆️, ⬇️, diagonals
-  STACK_MANIP,  // ⏫️, ⏬️, ⏹️, 🔄
-  PLANT,        // 🌱, 🌿, 🍀, 🌸, 🌵, 🌳, 🪓, 🍄, 🐝
-  RESOURCE,     // 🪨, ⛏️, 🗿
-  DESTRUCTION,  // 💣, 🔫, 🧨, 🌪️
-  BIOHAZARD,    // ☢️, 🚽, 🦠, 💊, ☣️, 🪰
-  SPECIAL,      // 🎲, 🧟, ➖
-}
+const TileType = {
+  CLAIM: 'claim',          // 🚩, ♾️, ☠️, 💩
+  MOVEMENT: 'movement',    // ↔️, ↕️, ➡️, ⬅️, ⬆️, ⬇️, diagonals
+  STACK_MANIP: 'stack',    // ⏫️, ⏬️, ⏹️, 🔄
+  PLANT: 'plant',          // 🌱, 🌿, 🍀, 🌸, 🌵, 🌳, 🪓, 🍄, 🐝
+  RESOURCE: 'resource',    // 🪨, ⛏️, 🗿
+  DESTRUCTION: 'destroy',  // 💣, 🔫, 🧨, 🌪️
+  BIOHAZARD: 'biohazard',  // ☢️, 🚽, 🦠, 💊, ☣️, 🪰
+  SPECIAL: 'special'       // 🎲, 🧟, ➖
+};
 ```
 
 #### 1.2 Grid System
-```typescript
-interface GridSpace {
-  position: { x: number; y: number };
-  stack: Tile[];           // Tiles at this position (bottom to top)
-  controlledBy?: PlayerId; // Who currently controls this space
-  flags: SpaceFlags;       // State flags for this space
+```javascript
+class GridSpace {
+  constructor(x, y) {
+    this.position = { x, y };
+    this.stack = [];             // Tiles at this position (bottom to top)
+    this.controlledBy = null;    // Who currently controls this space
+    this.flags = {
+      isNegated: false,          // ➖ effect active
+      isPermanent: false,        // ♾️ placed here
+      isStopped: false,          // ⏹️ effect active
+      isDestroyed: false         // 💣/🧨 destroyed
+    };
+  }
+
+  getTopTile() {
+    return this.stack.length > 0 ? this.stack[this.stack.length - 1] : null;
+  }
+
+  addTile(tile) {
+    this.stack.push(tile);
+  }
+
+  removeTile() {
+    return this.stack.pop();
+  }
 }
 
-interface SpaceFlags {
-  isNegated: boolean;      // ➖ effect active
-  isPermanent: boolean;    // ♾️ placed here
-  isStopped: boolean;      // ⏹️ effect active
-  isDestroyed: boolean;    // 💣/🧨 destroyed
-}
+class GameBoard {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+    this.spaces = Array(height).fill(null).map((_, y) =>
+      Array(width).fill(null).map((_, x) => new GridSpace(x, y))
+    );
+  }
 
-interface GameBoard {
-  width: number;
-  height: number;
-  spaces: GridSpace[][];   // 2D array of grid spaces
+  getSpace(x, y) {
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
+    return this.spaces[y][x];
+  }
 }
 ```
 
 #### 1.3 Player & Game State
-```typescript
-interface Player {
-  id: PlayerId;
-  name: string;
-  hand: Tile[];            // Current tiles in hand (max 7?)
-  score: number;
-  controlledSpaces: number; // Count for end-game bonus
-  statistics: {
-    tilesPlaced: number;
-    effectsActivated: number;
-    spacesControlled: number;
+```javascript
+class Player {
+  constructor(id, name) {
+    this.id = id;
+    this.name = name;
+    this.hand = [];              // Current tiles in hand (max 7?)
+    this.score = 0;
+    this.controlledSpaces = 0;   // Count for end-game bonus
+    this.emoji = ['🔴', '🔵', '🟢', '🟡'][id]; // Player identifier
+    this.statistics = {
+      tilesPlaced: 0,
+      effectsActivated: 0,
+      spacesControlled: 0
+    };
+  }
+
+  addToHand(tile) {
+    this.hand.push(tile);
+  }
+
+  removeFromHand(index) {
+    return this.hand.splice(index, 1)[0];
   }
 }
 
-interface GameState {
-  board: GameBoard;
-  players: Player[];
-  currentPlayerIndex: number;
-  turnNumber: number;
-  roundNumber: number;
-  deck: Tile[];            // Draw pile
-  config: GameConfig;
-  phase: GamePhase;
-  history: GameAction[];   // For undo/replay
+const GamePhase = {
+  SETUP: 'setup',
+  PLACEMENT: 'placement',
+  EFFECT_ACTIVATION: 'effect_activation',
+  DRAW: 'draw',
+  SCORING: 'scoring',
+  GAME_OVER: 'game_over'
+};
+
+class GameState {
+  constructor(config) {
+    this.board = new GameBoard(config.boardSize, config.boardSize);
+    this.players = [];
+    this.currentPlayerIndex = 0;
+    this.turnNumber = 0;
+    this.roundNumber = 0;
+    this.deck = [];              // Draw pile
+    this.config = config;
+    this.phase = GamePhase.SETUP;
+    this.history = [];           // For undo/replay
+  }
+
+  get currentPlayer() {
+    return this.players[this.currentPlayerIndex];
+  }
+
+  nextPlayer() {
+    this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+  }
 }
 
-interface GameConfig {
-  boardSize: number;       // NxN grid
-  maxTurns: number;        // Game ends after X turns
-  startingHandSize: number; // Default: 5
-  endGameBonus: number;    // Bonus for most controlled spaces
-  playerCount: number;     // 2-4 players
-}
-
-enum GamePhase {
-  SETUP,
-  PLACEMENT,
-  EFFECT_ACTIVATION,
-  DRAW,
-  SCORING,
-  GAME_OVER
+class GameConfig {
+  constructor() {
+    this.boardSize = 10;         // NxN grid
+    this.maxTurns = 50;          // Game ends after X turns
+    this.startingHandSize = 5;   // Default: 5
+    this.maxHandSize = 7;        // Maximum tiles in hand
+    this.endGameBonus = 10;      // Bonus for most controlled spaces
+    this.playerCount = 2;        // 2-4 players
+  }
 }
 ```
 
 #### 1.4 Effect System
-```typescript
-interface Effect {
-  type: EffectType;
-  targetingMode: TargetingMode; // How to select target
-  execute: (state: GameState, source: Position, target?: Position) => GameState;
-  canActivate: (state: GameState, source: Position) => boolean;
+```javascript
+class Effect {
+  constructor(type, targetingMode, execute, canActivate) {
+    this.type = type;
+    this.targetingMode = targetingMode;
+    this.execute = execute;      // Function: (state, source, target) => newState
+    this.canActivate = canActivate; // Function: (state, source) => boolean
+  }
 }
 
-enum EffectType {
-  CLAIM_SPACE,
-  MOVE_STACK,
-  DESTROY_STACK,
-  EVOLVE,
-  SPREAD,
+const EffectType = {
+  CLAIM_SPACE: 'claim_space',
+  MOVE_STACK: 'move_stack',
+  DESTROY_STACK: 'destroy_stack',
+  EVOLVE: 'evolve',
+  SPREAD: 'spread',
   // ... etc
-}
+};
 
-enum TargetingMode {
-  SELF,           // No target needed
-  ADJACENT,       // Choose adjacent space
-  RADIUS,         // Choose radius from source
-  ROW_COLUMN,     // Choose entire row or column
-  PATH,           // Draw a path (for 🌪️)
-  ANY,            // Any valid space
-}
+const TargetingMode = {
+  SELF: 'self',              // No target needed
+  ADJACENT: 'adjacent',      // Choose adjacent space
+  RADIUS: 'radius',          // Choose radius from source
+  ROW_COLUMN: 'row_column',  // Choose entire row or column
+  PATH: 'path',              // Draw a path (for 🌪️)
+  ANY: 'any'                 // Any valid space
+};
 ```
 
 ---
@@ -158,117 +207,366 @@ enum TargetingMode {
 **Priority: CRITICAL**
 
 #### 2.1 Game Initialization
-```typescript
+```javascript
 class GameEngine {
-  initializeGame(config: GameConfig, playerNames: string[]): GameState
-  createDeck(): Tile[]  // Create full deck based on Emojis file
-  shuffleDeck(deck: Tile[]): void
-  dealStartingHands(state: GameState): void
-  selectFirstPlayer(state: GameState): void
+  static initializeGame(config, playerNames) {
+    const state = new GameState(config);
+
+    // Create players
+    playerNames.forEach((name, i) => {
+      state.players.push(new Player(i, name));
+    });
+
+    // Create and shuffle deck
+    state.deck = this.createDeck();
+    this.shuffleDeck(state.deck);
+
+    // Deal starting hands
+    state.players.forEach(player => {
+      for (let i = 0; i < config.startingHandSize; i++) {
+        if (state.deck.length > 0) {
+          player.addToHand(state.deck.pop());
+        }
+      }
+    });
+
+    // Select first player randomly
+    state.currentPlayerIndex = Math.floor(Math.random() * state.players.length);
+    state.phase = GamePhase.PLACEMENT;
+
+    return state;
+  }
+
+  static createDeck() {
+    // Load tile definitions from data/tiles.json
+    // Create tiles based on deck composition from config
+    // Returns array of Tile instances
+  }
+
+  static shuffleDeck(deck) {
+    // Fisher-Yates shuffle
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+  }
 }
 ```
-
-**Implementation Details**:
-- Parse Emojis file to create tile definitions
-- Determine tile distribution/frequency in deck
-- Validate player count (2-4 recommended)
-- Initialize empty board with all spaces
 
 #### 2.2 Turn Management
-```typescript
+```javascript
 class TurnManager {
-  startTurn(state: GameState): GameState
-  placeTile(state: GameState, tile: Tile, position: Position): GameState
-  activateEffects(state: GameState, position: Position, choices: EffectChoice[]): GameState
-  drawTile(state: GameState): GameState
-  endTurn(state: GameState): GameState
+  static startTurn(state) {
+    state.phase = GamePhase.PLACEMENT;
+    return state;
+  }
 
-  validatePlacement(state: GameState, tile: Tile, position: Position): ValidationResult
-  getAvailableActions(state: GameState): Action[]
+  static placeTile(state, tileIndex, position) {
+    const player = state.currentPlayer;
+    const tile = player.hand[tileIndex];
+
+    // Validate placement
+    const validation = this.validatePlacement(state, tile, position);
+    if (!validation.valid) {
+      throw new Error(validation.error);
+    }
+
+    // Place tile on board
+    const space = state.board.getSpace(position.x, position.y);
+    space.addTile(tile);
+
+    // Remove from hand
+    player.removeFromHand(tileIndex);
+
+    // Update stats
+    player.statistics.tilesPlaced++;
+
+    // Move to effect activation phase
+    state.phase = GamePhase.EFFECT_ACTIVATION;
+
+    return state;
+  }
+
+  static activateEffects(state, position, effectChoices) {
+    const space = state.board.getSpace(position.x, position.y);
+    const tile = space.getTopTile();
+
+    // Execute each chosen effect
+    effectChoices.forEach(choice => {
+      const effect = tile.effects[choice.effectIndex];
+      if (effect.canActivate(state, position)) {
+        state = effect.execute(state, position, choice.target);
+        state.currentPlayer.statistics.effectsActivated++;
+      }
+    });
+
+    state.phase = GamePhase.DRAW;
+    return state;
+  }
+
+  static drawTile(state) {
+    const player = state.currentPlayer;
+
+    if (state.deck.length > 0 && player.hand.length < state.config.maxHandSize) {
+      player.addToHand(state.deck.pop());
+    }
+
+    state.phase = GamePhase.SCORING;
+    return state;
+  }
+
+  static endTurn(state) {
+    // Update scores
+    state = ScoringEngine.updateControlledSpaces(state);
+
+    // Check for end of round (all players took a turn)
+    if ((state.turnNumber + 1) % state.players.length === 0) {
+      state.roundNumber++;
+      state = this.processEndOfRound(state);
+    }
+
+    // Advance turn
+    state.turnNumber++;
+    state.nextPlayer();
+
+    // Check for game over
+    if (state.turnNumber >= state.config.maxTurns) {
+      state.phase = GamePhase.GAME_OVER;
+    } else {
+      state.phase = GamePhase.PLACEMENT;
+    }
+
+    return state;
+  }
+
+  static processEndOfRound(state) {
+    // Handle zombies (🧟 crawl to top)
+    state.board.spaces.forEach(row => {
+      row.forEach(space => {
+        this.processZombies(space);
+        this.evolvePlants(space);
+      });
+    });
+
+    return state;
+  }
+
+  static validatePlacement(state, tile, position) {
+    // Check if position is valid
+    const space = state.board.getSpace(position.x, position.y);
+    if (!space) {
+      return { valid: false, error: 'Invalid position' };
+    }
+
+    // Add more validation rules as needed
+    return { valid: true };
+  }
 }
 ```
 
-**Turn Flow**:
-1. Phase: PLACEMENT - Player selects tile from hand and position
-2. Validate placement (is position valid? does player have tile?)
-3. Place tile on grid (add to stack at position)
-4. Phase: EFFECT_ACTIVATION - Player chooses which effects to activate
-5. Execute effects in order chosen by player
-6. Phase: DRAW - Draw one tile if deck not empty
-7. Phase: SCORING - Update scores and controlled spaces
-8. Check end-of-round conditions (all players took turn)
-9. Check end-game conditions (turnNumber >= maxTurns)
-10. Advance to next player
-
 #### 2.3 Effect Engine
-```typescript
+```javascript
 class EffectEngine {
   // Claim effects
-  claimSpace(state: GameState, position: Position, player: PlayerId): GameState
-  permanentClaim(state: GameState, position: Position, player: PlayerId): GameState // ♾️
-  negateSpace(state: GameState, position: Position, player: PlayerId): GameState    // ➖
+  static claimSpace(state, position, playerId) {
+    const space = state.board.getSpace(position.x, position.y);
+    space.controlledBy = playerId;
+    return state;
+  }
+
+  static permanentClaim(state, position, playerId) {
+    const space = state.board.getSpace(position.x, position.y);
+    space.controlledBy = playerId;
+    space.flags.isPermanent = true;
+    return state;
+  }
+
+  static negateSpace(state, position, playerId) {
+    const space = state.board.getSpace(position.x, position.y);
+    space.flags.isNegated = true;
+    space.controlledBy = playerId;
+    return state;
+  }
 
   // Movement effects
-  moveStack(state: GameState, from: Position, to: Position, direction: Direction): GameState
-  moveStackDistance(state: GameState, from: Position, direction: Direction, distance: number): GameState
+  static moveStack(state, from, to) {
+    const fromSpace = state.board.getSpace(from.x, from.y);
+    const toSpace = state.board.getSpace(to.x, to.y);
+
+    if (!fromSpace || !toSpace) return state;
+
+    // Move entire stack
+    toSpace.stack.push(...fromSpace.stack);
+    fromSpace.stack = [];
+    fromSpace.controlledBy = null;
+
+    return state;
+  }
+
+  static moveStackDistance(state, from, direction, distance) {
+    const to = {
+      x: from.x + direction.dx * distance,
+      y: from.y + direction.dy * distance
+    };
+
+    // Check if destination is valid
+    const toSpace = state.board.getSpace(to.x, to.y);
+    if (!toSpace) return state; // Invalid move, do nothing
+
+    return this.moveStack(state, from, to);
+  }
 
   // Stack manipulation
-  moveBottomToTop(state: GameState, position: Position): GameState    // ⏫️
-  moveTopToBottom(state: GameState, position: Position): GameState    // ⏬️
-  stopEffects(state: GameState, position: Position): GameState        // ⏹️
-  reshuffleStack(state: GameState, position: Position): GameState     // 🔄
+  static moveBottomToTop(state, position) {
+    const space = state.board.getSpace(position.x, position.y);
+    if (space.stack.length > 1) {
+      const bottomTile = space.stack.shift();
+      space.stack.push(bottomTile);
+    }
+    return state;
+  }
+
+  static moveTopToBottom(state, position) {
+    const space = state.board.getSpace(position.x, position.y);
+    if (space.stack.length > 1) {
+      const topTile = space.stack.pop();
+      space.stack.unshift(topTile);
+    }
+    return state;
+  }
+
+  static stopEffects(state, position) {
+    const space = state.board.getSpace(position.x, position.y);
+    space.flags.isStopped = true;
+    return state;
+  }
+
+  static reshuffleStack(state, position) {
+    const space = state.board.getSpace(position.x, position.y);
+    // Fisher-Yates shuffle on stack
+    for (let i = space.stack.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [space.stack[i], space.stack[j]] = [space.stack[j], space.stack[i]];
+    }
+    return state;
+  }
 
   // Destruction effects
-  destroyStack(state: GameState, position: Position): GameState                    // 🔫
-  destroyRadius(state: GameState, center: Position, radius: number): GameState     // 💣, 🧨
-  destroyPath(state: GameState, path: Position[]): GameState                       // 🌪️
-  destroyRowOrColumn(state: GameState, line: Position[]): GameState                // 🚽
+  static destroyStack(state, position) {
+    const space = state.board.getSpace(position.x, position.y);
+    space.stack = space.stack.filter(tile => this.isIndestructible(tile));
+    if (space.stack.length === 0) {
+      space.controlledBy = null;
+    }
+    return state;
+  }
+
+  static destroyRadius(state, center, radius, claimCount = 0) {
+    const destroyed = [];
+
+    for (let y = center.y - radius; y <= center.y + radius; y++) {
+      for (let x = center.x - radius; x <= center.x + radius; x++) {
+        const distance = Math.max(Math.abs(x - center.x), Math.abs(y - center.y));
+        if (distance <= radius) {
+          const space = state.board.getSpace(x, y);
+          if (space) {
+            state = this.destroyStack(state, { x, y });
+            destroyed.push({ x, y });
+          }
+        }
+      }
+    }
+
+    // Claim some spaces from destroyed (for 🧨)
+    if (claimCount > 0 && destroyed.length > 0) {
+      const toClaim = destroyed.slice(0, claimCount);
+      toClaim.forEach(pos => {
+        state = this.claimSpace(state, pos, state.currentPlayer.id);
+      });
+    }
+
+    return state;
+  }
+
+  static isIndestructible(tile) {
+    return tile.emoji === '🗿'; // Moai is indestructible
+  }
 
   // Plant system
-  evolvePlant(state: GameState, position: Position): GameState
-  plantSeedling(state: GameState, position: Position, player: PlayerId): GameState
-  chopPlant(state: GameState, position: Position): GameState          // 🪓
-  spreadMushroom(state: GameState, position: Position): GameState     // 🍄
+  static evolvePlant(state, position) {
+    const space = state.board.getSpace(position.x, position.y);
+    const tile = space.getTopTile();
 
-  // Resource system
-  destroyRock(state: GameState, position: Position): GameState        // ⛏️ on 🪨
-  convertToMoai(state: GameState, position: Position): GameState      // ⛏️ on own 🪨
+    if (!tile || tile.type !== TileType.PLANT) return state;
 
-  // Biohazard system
-  convertPoopToGerms(state: GameState, player: PlayerId): GameState   // ☢️
-  spreadGerms(state: GameState, position: Position): GameState        // 🦠
-  spreadPoop(state: GameState, position: Position): GameState         // 🪰
-  cureGerms(state: GameState, player: PlayerId): GameState            // 💊
-  biohazardDestruction(state: GameState, position: Position): GameState // ☣️
+    tile.metadata.turnCount++;
 
-  // Special effects
-  zombieCrawl(state: GameState, position: Position): GameState        // 🧟
-  randomTile(state: GameState, position: Position): GameState         // 🎲
+    const evolutionMap = {
+      '🌱': '🌿',  // Seedling -> Intermediate
+      '🌿': null   // Intermediate -> choice (handled separately)
+    };
+
+    if (evolutionMap[tile.emoji]) {
+      tile.emoji = evolutionMap[tile.emoji];
+      tile.metadata.evolutionStage = tile.emoji;
+    }
+
+    return state;
+  }
+
+  // ... more effects to be implemented
 }
 ```
 
 #### 2.4 Scoring System
-```typescript
+```javascript
 class ScoringEngine {
-  calculateScore(state: GameState, player: PlayerId): number
-  updateControlledSpaces(state: GameState): void
-  tallyEndOfRound(state: GameState): ScoreUpdate[]
-  calculateEndGameBonus(state: GameState): Map<PlayerId, number>
+  static calculateScore(state, playerId) {
+    let score = 0;
+    let controlledSpaces = 0;
 
-  // Scoring rules (to be defined)
-  // - 1 point per controlled space?
-  // - Bonus points for certain tile combinations?
-  // - Points for plant evolution levels?
-  // - Deductions for negated spaces?
+    state.board.spaces.forEach(row => {
+      row.forEach(space => {
+        if (space.controlledBy === playerId && !space.flags.isNegated) {
+          score += 1; // 1 point per controlled space
+          controlledSpaces++;
+
+          // Bonus for permanent control
+          if (space.flags.isPermanent) {
+            score += 1;
+          }
+        }
+      });
+    });
+
+    const player = state.players[playerId];
+    player.score = score;
+    player.controlledSpaces = controlledSpaces;
+    player.statistics.spacesControlled = controlledSpaces;
+
+    return score;
+  }
+
+  static updateControlledSpaces(state) {
+    state.players.forEach(player => {
+      this.calculateScore(state, player.id);
+    });
+    return state;
+  }
+
+  static calculateEndGameBonus(state) {
+    const maxSpaces = Math.max(...state.players.map(p => p.controlledSpaces));
+    const winners = state.players.filter(p => p.controlledSpaces === maxSpaces);
+
+    const bonusPerWinner = state.config.endGameBonus / winners.length;
+    winners.forEach(player => {
+      player.score += bonusPerWinner;
+    });
+
+    return state;
+  }
 }
 ```
-
-**Scoring Considerations**:
-- Define point values for different control types
-- Handle ♾️ (permanent control) scoring
-- Handle ➖ (negated) spaces in scoring
-- Handle 🧟 (zombie) interaction with control
-- End-game bonus calculation for most spaces
 
 ---
 
@@ -276,964 +574,885 @@ class ScoringEngine {
 **Priority: HIGH**
 
 #### 3.1 Plant Evolution System
-The plant system is complex with multiple evolution paths:
-
-```
-🌱 (seedling) → [1 turn] → 🌿 (intermediate) → [1 turn] → evolved form
-                                                           ├─ 🍀 (clover): draw extra tile
-                                                           ├─ 🌸 (flower): combo with 🐝
-                                                           ├─ 🌵 (cactus): only destroyed by 💣/☢️
-                                                           └─ 🌳 (tree): place extra seedling
-
-Special interactions:
-- 🐝 + 🌸 → plant new seedling for each flower
-- 🪓 + 🌳 → leaves 🪵 (stump)
-- 🪓 + other plants → reclaim space
-- 🍄 + 🪵 → all user plants become 🍄
-```
-
-**Implementation**:
-```typescript
+```javascript
 class PlantEvolutionSystem {
-  processEndOfTurn(state: GameState): GameState  // Age all plants
-  evolvePlant(state: GameState, position: Position): Tile
-  getEvolutionOptions(plant: Tile): string[]     // What this plant can evolve to
-  handleBeeFlowerCombo(state: GameState, beePos: Position): GameState
-  handleMushroomStumpCombo(state: GameState, mushroomPos: Position): GameState
-}
-```
-
-#### 3.2 Destruction & Interaction Rules
-```typescript
-class DestructionRules {
-  canDestroy(tile: Tile, destroyer: Tile): boolean
-
-  // Destruction matrix
-  // 🗿 cannot be destroyed by anything
-  // 🌵 only destroyed by 💣, 🧨, ☣️
-  // 🪨 only destroyed by ⛏️, 💣, 🧨, ☣️
-  // ♾️ permanent claim - how to handle?
-}
-```
-
-**Destruction Priority** (to define):
-1. What happens when stack is destroyed?
-   - Remove all tiles?
-   - Remove top tile only?
-   - Remove until indestructible tile?
-
-2. Radius destruction (💣, 🧨, ☣️):
-   - 💣: 1 tile radius
-   - 🧨: 3 tile radius, claim 4 tiles from radius
-   - ☣️: destroy all stacks, claim 4 flags
-
-#### 3.3 Movement System
-```typescript
-class MovementSystem {
-  moveStack(state: GameState, from: Position, to: Position): GameState
-
-  // Movement types:
-  // - ↔️, ↕️: choose direction (left/right or up/down)
-  // - ➡️, ⬅️, ⬆️, ⬇️: move X spaces in direction
-  // - ↖️, ↙️, ↘️, ↗️: diagonal movement X spaces
-
-  getValidMovePositions(state: GameState, from: Position, direction: Direction, distance?: number): Position[]
-  validateMove(state: GameState, from: Position, to: Position): boolean
-
-  // Questions to resolve:
-  // - What happens if moving to occupied space? Stack on top? Reject?
-  // - What happens if move would go off board? Stop at edge? Invalid?
-  // - Does moving affect control of the space moved from?
-}
-```
-
-#### 3.4 Special Interactions
-```typescript
-class SpecialInteractions {
-  // 🧟 zombie - crawls to top at end of round
-  processZombies(state: GameState): GameState
-
-  // ☠️ skull - negates all zombies in space when placed
-  negateZombies(state: GameState, position: Position): GameState
-
-  // ➖ negate - sets flag, what exactly does this prevent?
-  processNegation(state: GameState, position: Position): GameState
-
-  // ⏹️ stop - stops all effects in stack
-  stopStackEffects(state: GameState, position: Position): GameState
-
-  // 🎲 dice - random tile placement
-  placeRandomTile(state: GameState, position: Position): GameState
-}
-```
-
----
-
-### Phase 4: User Interface & Input
-**Priority: HIGH**
-
-#### 4.1 Game Display
-```typescript
-interface GameRenderer {
-  renderBoard(state: GameState): void
-  renderPlayerHand(player: Player): void
-  renderScoreboard(state: GameState): void
-  renderGameStatus(state: GameState): void  // Current turn, phase, etc.
-
-  highlightValidPlacements(state: GameState, tile: Tile): void
-  highlightEffectTargets(state: GameState, effect: Effect, source: Position): void
-
-  // Stack visualization
-  renderStack(stack: Tile[]): void  // Show top tile, indicate stack depth
-  showStackDetails(position: Position): void  // Expand to show all tiles
-}
-```
-
-#### 4.2 Player Input
-```typescript
-interface InputHandler {
-  selectTileFromHand(): Promise<Tile>
-  selectBoardPosition(): Promise<Position>
-  selectEffect(availableEffects: Effect[]): Promise<Effect>
-  selectEffectTarget(effect: Effect, validTargets: Position[]): Promise<Position>
-  selectDirection(): Promise<Direction>
-  selectDistance(max: number): Promise<number>
-  selectPath(start: Position, mustEndOnEdge: boolean): Promise<Position[]>  // For 🌪️
-  selectRowOrColumn(): Promise<Position[]>  // For 🚽
-
-  confirmAction(action: string): Promise<boolean>
-}
-```
-
-#### 4.3 TUI Implementation with libghostty
-
-**Primary Implementation: libghostty TUI**
-
-libghostty provides a modern, efficient terminal user interface framework ideal for this game.
-
-**Key Features to Utilize**:
-- Rich emoji rendering support (critical for emoji-based tiles)
-- Advanced terminal graphics and colors
-- Responsive layout system
-- Event handling (keyboard, potentially mouse)
-- Efficient screen updates for animations
-
-**UI Components to Build**:
-```typescript
-// Main game view
-class GameView {
-  boardPanel: BoardPanel        // Grid display with emojis
-  handPanel: HandPanel          // Player's current tiles
-  scorePanel: ScorePanel        // Scoreboard
-  statusPanel: StatusPanel      // Turn info, phase, messages
-  effectPanel: EffectPanel      // Effect selection/targeting
-}
-
-// Board rendering
-class BoardPanel {
-  renderGrid(board: GameBoard): void
-  renderStack(position: Position, stack: Tile[]): void
-  highlightValidMoves(positions: Position[]): void
-  showStackPopup(position: Position): void  // Detailed stack view
-
-  // Visual elements
-  // - Grid lines using box-drawing characters
-  // - Each cell shows top emoji or stack indicator
-  // - Color-coded borders for player control
-  // - Hover/selection highlighting
-}
-
-// Player hand rendering
-class HandPanel {
-  renderHand(tiles: Tile[]): void
-  highlightSelected(index: number): void
-
-  // Show tiles horizontally with:
-  // - Emoji display
-  // - Tile name
-  // - Keyboard shortcut (1-7)
-}
-
-// Keyboard controls
-interface Controls {
-  // Board navigation
-  "Arrow Keys": "Move cursor on board"
-  "Tab": "Switch between board/hand/effects"
-
-  // Tile selection
-  "1-7": "Select tile from hand"
-  "Enter": "Confirm placement/selection"
-  "Space": "Show stack details"
-
-  // Effect activation
-  "e": "Open effects menu"
-  "a-z": "Quick-select effects"
-
-  // Game controls
-  "u": "Undo (if allowed)"
-  "h": "Show help"
-  "q": "Quit game"
-}
-```
-
-**Layout Structure**:
-```
-┌─────────────────────────────────────────────────────────────┐
-│ EMOJINAL - Turn 12/50 - Player 1's Turn - Phase: Placement │
-├─────────────────────────────────────┬───────────────────────┤
-│                                     │  SCOREBOARD          │
-│          GAME BOARD                 │  Player 1: 🔴  45    │
-│      (Grid with emojis)             │  Player 2: 🔵  38    │
-│                                     │                       │
-│   🚩 💩 🌱 🪨 ➡️ 🔫 💣 ⬆️ ↔️ 🌳      │  SPACES CONTROLLED:  │
-│   ♾️ 🧟 🌿 ⛏️ ⬅️ 🧨 ⏫️ ⬇️ ↕️ 🗿      │  Player 1: 12        │
-│   🚩 🌸 🍀 💩 ➡️ ⏬️ 🔄 ⬆️ ↖️ 🌵      │  Player 2: 10        │
-│   🪨 🐝 🌳 🚩 ⬅️ 🔫 ⏹️ ⬇️ ↙️ 🪓      │                       │
-│   🦠 💩 🪰 🗿 ➡️ 💊 🧟 ⬆️ ↘️ 🍄      │  LAST ACTION:        │
-│   ☢️ 🚽 🚩 🪨 ⬅️ ☠️ 💣 ⬇️ ↗️ 🌱      │  Placed 🚩 at (5,3)  │
-│                                     │                       │
-├─────────────────────────────────────┴───────────────────────┤
-│ YOUR HAND:                                                   │
-│ [1] 🚩  [2] 🌱  [3] ➡️  [4] 💣  [5] 🪨  [6] ↔️  [7] 🔫      │
-├──────────────────────────────────────────────────────────────┤
-│ STATUS: Select a tile to place (1-7) or press 'h' for help │
-└──────────────────────────────────────────────────────────────┘
-```
-
-**Animation Support**:
-- Tile placement fade-in
-- Effect activation flash/highlight
-- Score update counters
-- Stack movement trails
-- Destruction effects (flash, fade-out)
-
-**Responsive Design**:
-- Adapt grid size to terminal dimensions
-- Scale UI panels based on available space
-- Minimum terminal size: 80x24
-- Optimal size: 120x40
-
-**Performance Considerations**:
-- Only redraw changed regions
-- Use libghostty's efficient rendering
-- Debounce rapid updates
-- Cache rendered emoji glyphs
-
----
-
-### Phase 5: AI & Multiplayer
-**Priority: MEDIUM**
-
-#### 5.1 AI Players
-```typescript
-interface AIPlayer {
-  selectTile(state: GameState, hand: Tile[]): Tile
-  selectPlacement(state: GameState, tile: Tile): Position
-  selectEffects(state: GameState, tile: Tile, position: Position): EffectChoice[]
-
-  // AI difficulty levels
-  // - Easy: Random valid moves
-  // - Medium: Basic scoring heuristics
-  // - Hard: Minimax with effect evaluation
-}
-
-class AIStrategy {
-  evaluateMove(state: GameState, move: Move): number
-  getBestMove(state: GameState): Move
-
-  // Evaluation factors:
-  // - Control gain
-  // - Opponent control disruption
-  // - Position value (center vs edges)
-  // - Combo potential
-  // - Defensive value
-}
-```
-
-#### 5.2 Multiplayer Architecture
-```typescript
-// Local multiplayer: hot-seat or pass-and-play
-class LocalMultiplayer {
-  obscureHand(player: Player): void  // Hide hand between turns
-  waitForPlayerReady(): Promise<void>
-}
-
-// Network multiplayer (future)
-interface NetworkManager {
-  sendGameState(state: GameState): void
-  receiveGameState(): Promise<GameState>
-  sendAction(action: GameAction): void
-  receiveAction(): Promise<GameAction>
-
-  // Sync strategy:
-  // - Option 1: Full state sync (simpler, more bandwidth)
-  // - Option 2: Action sync with deterministic engine (complex, less bandwidth)
-}
-```
-
----
-
-### Phase 6: Testing & Balance
-**Priority: HIGH**
-
-#### 6.1 Unit Tests
-```typescript
-// Test each effect independently
-describe('EffectEngine', () => {
-  test('claimSpace correctly assigns control', () => { /* ... */ })
-  test('moveStack validates boundaries', () => { /* ... */ })
-  test('destroyRadius affects correct tiles', () => { /* ... */ })
-  test('plantEvolution follows correct path', () => { /* ... */ })
-  // ... etc for all effects
-})
-
-// Test game state transitions
-describe('GameEngine', () => {
-  test('turn advances correctly', () => { /* ... */ })
-  test('scoring updates at round end', () => { /* ... */ })
-  test('game ends after maxTurns', () => { /* ... */ })
-})
-
-// Test edge cases
-describe('Edge Cases', () => {
-  test('deck runs out mid-game', () => { /* ... */ })
-  test('all spaces filled before maxTurns', () => { /* ... */ })
-  test('indestructible tiles block destruction', () => { /* ... */ })
-  test('movement off board handled correctly', () => { /* ... */ })
-})
-```
-
-#### 6.2 Integration Tests
-```typescript
-describe('Full Game Flow', () => {
-  test('complete 2-player game', () => { /* ... */ })
-  test('plant evolution combo chains', () => { /* ... */ })
-  test('destruction and claiming interactions', () => { /* ... */ })
-})
-```
-
-#### 6.3 Game Balance
-- **Tile Distribution**: How many of each tile in deck?
-  - Common: 🚩, ➡️, ⬅️, ⬆️, ⬇️, 💩, 🌱
-  - Uncommon: ↔️, ↕️, diagonals, 🪨, 🔫, 🦠
-  - Rare: ♾️, 🗿, 💣, 🧨, ☣️, 🐝, 🪓
-  - Very Rare: ⏹️, 🌪️, 🎲
-
-- **Effect Balancing**:
-  - Destruction radius vs cost
-  - Movement distance limits
-  - Evolution timing and benefits
-  - Point values for different control types
-
-- **Playtesting Metrics**:
-  - Average game length
-  - Win rate by first/second player
-  - Most/least used tiles
-  - Dominant strategies (nerf if found)
-
----
-
-### Phase 7: Polish & Enhancement
-**Priority: LOW**
-
-#### 7.1 Visual Effects
-- Tile placement animations
-- Effect activation visuals (explosions, movement trails, etc.)
-- Score updates with flyout numbers
-- Stack depth indicators
-- Control territory highlighting
-
-#### 7.2 Sound Design
-- Tile placement sounds
-- Effect activation sounds (themed by type)
-- Background music (optional, toggleable)
-- Victory/defeat sounds
-
-#### 7.3 Quality of Life
-```typescript
-interface QoLFeatures {
-  undoLastMove(): void  // Before effect activation
-  showMoveHistory(): void
-  highlightRecommendedMoves(): void  // For new players
-  tutorialMode(): void
-  saveGame(): void
-  loadGame(): void
-  replayGame(history: GameAction[]): void
-}
-```
-
-#### 7.4 Achievements & Stats
-```typescript
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  condition: (stats: PlayerStats) => boolean;
-}
-
-// Example achievements:
-// - "Green Thumb": Evolve 10 plants in one game
-// - "Demolition Expert": Use 💣, 🧨, and ☣️ in one game
-// - "Turtle Power": Win with only 🗿 and 🪨 tiles
-// - "Gardener": Have 5 different plant types on board simultaneously
-```
-
----
-
-## Data File Formats
-
-### Tile Definition File
-Enhance existing `Emojis` file with structured format:
-
-```json
-{
-  "tiles": [
-    {
-      "emoji": "🚩",
-      "name": "Flag",
-      "type": "CLAIM",
-      "description": "User claims space",
-      "rarity": "common",
-      "effects": [
-        {
-          "type": "CLAIM_SPACE",
-          "targeting": "SELF"
+  static processEndOfTurn(state) {
+    state.board.spaces.forEach(row => {
+      row.forEach(space => {
+        const tile = space.getTopTile();
+        if (tile && tile.type === TileType.PLANT) {
+          this.evolvePlant(state, space.position);
         }
-      ]
-    },
-    {
-      "emoji": "🌱",
-      "name": "Seedling",
-      "type": "PLANT",
-      "description": "Continues to grow through stack. After 1 turn on top evolves.",
-      "rarity": "common",
-      "effects": [
-        {
-          "type": "EVOLVE",
-          "targeting": "SELF",
-          "delay": 1
-        }
-      ],
-      "evolution": {
-        "turns": 1,
-        "next": "🌿"
-      }
-    }
-    // ... etc
-  ]
-}
-```
+      });
+    });
+    return state;
+  }
 
-### Game Configuration File
-```json
-{
-  "gameConfig": {
-    "boardSize": 10,
-    "maxTurns": 50,
-    "startingHandSize": 5,
-    "maxHandSize": 7,
-    "endGameBonus": 10,
-    "playerCount": 2,
-    "deckComposition": {
-      "🚩": 8,
-      "➖": 4,
-      "♾️": 2,
-      "🧟": 6,
-      "☠️": 4,
-      "↔️": 6,
-      "↕️": 6,
-      "➡️": 8,
-      "⬅️": 8,
-      "⬆️": 8,
-      "⬇️": 8,
-      "↖️": 4,
-      "↙️": 4,
-      "↘️": 4,
-      "↗️": 4,
-      "⏫️": 4,
-      "⏬️": 4,
-      "⏹️": 2,
-      "🔄": 4,
-      "🌱": 10,
-      "🪨": 6,
-      "⛏️": 4,
-      "🗿": 2,
-      "💣": 3,
-      "🔫": 6,
-      "🧨": 2,
-      "🌪️": 2,
-      "☢️": 2,
-      "🚽": 4,
-      "💩": 8,
-      "🪰": 4,
-      "🦠": 6,
-      "💊": 4,
-      "☣️": 1,
-      "🎲": 4
-    }
+  static evolvePlant(state, position) {
+    const space = state.board.getSpace(position.x, position.y);
+    const tile = space.getTopTile();
+
+    if (!tile || tile.metadata.turnCount < 1) return tile;
+
+    const evolutionPaths = {
+      '🌱': ['🌿'],
+      '🌿': ['🍀', '🌸', '🌵', '🌳'] // Player chooses
+    };
+
+    return evolutionPaths[tile.emoji] || tile;
+  }
+
+  static getEvolutionOptions(plant) {
+    const evolutionPaths = {
+      '🌱': ['🌿'],
+      '🌿': ['🍀', '🌸', '🌵', '🌳']
+    };
+    return evolutionPaths[plant.emoji] || [];
   }
 }
 ```
 
 ---
 
-## Technical Stack Recommendations
+### Phase 4: Web Interface
+**Priority: CRITICAL**
 
-### Selected Technology Stack
+#### 4.1 Web Components Architecture
 
-**Primary Implementation: Zig + libghostty**
+```javascript
+// Main game component
+class GameApp extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this.state = null;
+  }
 
-**Core Language: Zig**
-- Pros:
-  - Excellent performance for game logic
-  - Memory safety without garbage collection
-  - Great interop with C libraries (libghostty)
-  - Simple, readable syntax
-  - Fast compilation
-- Cons:
-  - Smaller ecosystem than JS/Python
-  - Newer language, evolving tooling
-- Best for: High-performance TUI applications
+  connectedCallback() {
+    this.render();
+    this.setupEventListeners();
+    this.initializeGame();
+  }
 
-**UI Framework: libghostty**
-- Modern terminal UI library
-- Excellent emoji and Unicode support
-- Efficient rendering for smooth gameplay
-- Cross-platform terminal compatibility
-- Event-driven architecture
+  initializeGame() {
+    const config = new GameConfig();
+    this.state = GameEngine.initializeGame(config, ['Player 1', 'Player 2']);
+    this.updateUI();
+  }
 
-**Alternative Stack (if Zig not preferred): Rust + libghostty**
-- Rust also has excellent libghostty bindings
-- Similar performance characteristics
-- More mature ecosystem
-- Steeper learning curve
-
-**Alternative Stack (rapid prototyping): Python + Textual**
-- If libghostty bindings unavailable for preferred language
-- Textual provides similar TUI capabilities
-- Faster initial development
-- Trade-off: slower runtime performance
-
-### Libraries & Frameworks
-
-**For TUI (Primary)**:
-- libghostty: Terminal UI framework
-- Zig standard library for data structures
-- Random number generation (for shuffling, first player)
-
-**For Testing**:
-- Zig built-in testing framework
-- Integration tests for game logic
-- TUI snapshot testing for interface
-
-**For Future Multiplayer**:
-- WebSocket library for real-time communication
-- JSON serialization for state sync
-- Optional: database for persistent games (SQLite)
-
----
-
-## libghostty Integration Details
-
-### Project Structure
-```
-emojinal/
-├── src/
-│   ├── main.zig              # Entry point
-│   ├── game/
-│   │   ├── engine.zig        # Core game engine
-│   │   ├── state.zig         # Game state management
-│   │   ├── tile.zig          # Tile definitions
-│   │   ├── board.zig         # Board logic
-│   │   ├── effects.zig       # Effect system
-│   │   ├── scoring.zig       # Scoring logic
-│   │   └── ai.zig            # AI player
-│   ├── ui/
-│   │   ├── app.zig           # Main TUI application
-│   │   ├── board_view.zig    # Board rendering
-│   │   ├── hand_view.zig     # Hand display
-│   │   ├── score_view.zig    # Scoreboard
-│   │   ├── input.zig         # Input handling
-│   │   └── theme.zig         # Colors and styling
-│   └── utils/
-│       ├── config.zig        # Configuration loading
-│       └── data.zig          # Tile data parsing
-├── data/
-│   ├── tiles.json            # Tile definitions (parsed from Emojis)
-│   └── config.json           # Game configuration
-├── tests/
-│   ├── game_test.zig         # Game logic tests
-│   ├── effects_test.zig      # Effect tests
-│   └── integration_test.zig  # Full game tests
-├── build.zig                 # Build configuration
-├── Emojis                    # Original emoji definitions
-└── GAME_ENGINE_PLAN.md       # This document
-```
-
-### libghostty Event Loop
-```zig
-const ghostty = @import("ghostty");
-
-pub fn main() !void {
-    var app = try ghostty.App.init();
-    defer app.deinit();
-
-    var game_state = try initializeGame();
-
-    // Main game loop
-    while (game_state.phase != .GAME_OVER) {
-        // Render current state
-        try renderGame(app, game_state);
-
-        // Handle input
-        const event = try app.nextEvent();
-        switch (event) {
-            .key => |key| try handleKeyPress(key, &game_state),
-            .resize => try handleResize(app),
-            .quit => break,
+  render() {
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: grid;
+          grid-template-areas:
+            "header header"
+            "board  sidebar"
+            "hand   hand"
+            "status status";
+          grid-template-columns: 1fr 300px;
+          grid-template-rows: auto 1fr auto auto;
+          gap: 1rem;
+          padding: 1rem;
+          height: 100vh;
+          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+          color: #fff;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        // Update game state
-        try updateGame(&game_state);
+        @media (max-width: 768px) {
+          :host {
+            grid-template-areas:
+              "header"
+              "board"
+              "hand"
+              "sidebar"
+              "status";
+            grid-template-columns: 1fr;
+            grid-template-rows: auto 1fr auto auto auto;
+          }
+        }
+      </style>
+      <game-status id="status"></game-status>
+      <game-board id="board"></game-board>
+      <score-panel id="score"></score-panel>
+      <player-hand id="hand"></player-hand>
+      <effect-selector id="effects"></effect-selector>
+    `;
+  }
+
+  setupEventListeners() {
+    this.shadowRoot.getElementById('hand').addEventListener('tile-selected', (e) => {
+      this.handleTileSelected(e.detail.index);
+    });
+
+    this.shadowRoot.getElementById('board').addEventListener('cell-selected', (e) => {
+      this.handleCellSelected(e.detail.x, e.detail.y);
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key >= '1' && e.key <= '7') {
+        const index = parseInt(e.key) - 1;
+        if (index < this.state.currentPlayer.hand.length) {
+          this.handleTileSelected(index);
+        }
+      }
+    });
+  }
+
+  handleTileSelected(index) {
+    this.selectedTileIndex = index;
+    this.updateUI();
+  }
+
+  handleCellSelected(x, y) {
+    if (this.selectedTileIndex !== null && this.state.phase === GamePhase.PLACEMENT) {
+      try {
+        this.state = TurnManager.placeTile(this.state, this.selectedTileIndex, { x, y });
+        this.selectedTileIndex = null;
+
+        // Auto-skip effects for now (will be implemented later)
+        this.state = TurnManager.drawTile(this.state);
+        this.state = TurnManager.endTurn(this.state);
+
+        this.updateUI();
+      } catch (error) {
+        console.error('Invalid placement:', error);
+      }
     }
+  }
 
-    // Show final scores
-    try renderGameOver(app, game_state);
+  updateUI() {
+    this.shadowRoot.getElementById('board').updateState(this.state);
+    this.shadowRoot.getElementById('hand').updateState(this.state, this.selectedTileIndex);
+    this.shadowRoot.getElementById('score').updateState(this.state);
+    this.shadowRoot.getElementById('status').updateState(this.state);
+  }
 }
+
+customElements.define('game-app', GameApp);
 ```
 
-### Rendering Optimization
-```zig
-// Only redraw changed regions
-const DirtyRegions = struct {
-    board: bool,
-    hand: bool,
-    scores: bool,
-    status: bool,
-};
+#### 4.2 Game Board Component
 
-fn render(app: *App, state: GameState, dirty: DirtyRegions) !void {
-    if (dirty.board) try renderBoard(app, state.board);
-    if (dirty.hand) try renderHand(app, state.current_player);
-    if (dirty.scores) try renderScores(app, state.players);
-    if (dirty.status) try renderStatus(app, state);
+```javascript
+class GameBoard extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this.state = null;
+  }
 
-    try app.flush();
+  updateState(state) {
+    this.state = state;
+    this.render();
+  }
+
+  render() {
+    if (!this.state) return;
+
+    const gridSize = this.state.board.width;
+    const cells = this.state.board.spaces.map((row, y) =>
+      row.map((space, x) => this.renderCell(space, x, y)).join('')
+    ).join('');
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .board-container {
+          grid-area: board;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1rem;
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .board-grid {
+          display: grid;
+          grid-template-columns: repeat(${gridSize}, 1fr);
+          gap: 4px;
+          background: #0f3460;
+          padding: 8px;
+          border-radius: 8px;
+          max-width: 600px;
+          max-height: 600px;
+        }
+
+        .grid-cell {
+          aspect-ratio: 1;
+          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: clamp(1.5rem, 4vw, 2.5rem);
+          cursor: pointer;
+          position: relative;
+          border-radius: 4px;
+          border: 2px solid transparent;
+          transition: all 0.2s ease;
+          user-select: none;
+        }
+
+        .grid-cell:hover {
+          background: linear-gradient(135deg, #2a2a3e 0%, #26314e 100%);
+          transform: scale(1.05);
+          border-color: #4a9eff;
+          box-shadow: 0 0 15px rgba(74, 158, 255, 0.5);
+        }
+
+        .grid-cell[data-controlled-by="0"] {
+          border-color: #f44336;
+          box-shadow: 0 0 10px rgba(244, 67, 54, 0.3);
+        }
+
+        .grid-cell[data-controlled-by="1"] {
+          border-color: #2196f3;
+          box-shadow: 0 0 10px rgba(33, 150, 243, 0.3);
+        }
+
+        .grid-cell[data-controlled-by="2"] {
+          border-color: #4caf50;
+          box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .grid-cell[data-controlled-by="3"] {
+          border-color: #ffeb3b;
+          box-shadow: 0 0 10px rgba(255, 235, 59, 0.3);
+        }
+
+        .stack-indicator {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          font-size: 0.6em;
+          background: rgba(0, 0, 0, 0.8);
+          padding: 2px 6px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          font-weight: bold;
+          color: #4a9eff;
+        }
+
+        .empty-cell {
+          color: #333;
+          font-size: 1rem;
+        }
+
+        @keyframes tile-placed {
+          0% {
+            transform: scale(0) rotate(180deg);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.2) rotate(-10deg);
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+
+        .tile-emoji {
+          animation: tile-placed 0.3s ease-out;
+        }
+      </style>
+      <div class="board-container">
+        <div class="board-grid">
+          ${cells}
+        </div>
+      </div>
+    `;
+
+    this.attachCellListeners();
+  }
+
+  renderCell(space, x, y) {
+    const topTile = space.getTopTile();
+    const stackCount = space.stack.length;
+    const emoji = topTile ? topTile.emoji : '';
+    const stackIndicator = stackCount > 1 ?
+      `<span class="stack-indicator">${stackCount}</span>` : '';
+
+    return `
+      <div class="grid-cell"
+           data-x="${x}"
+           data-y="${y}"
+           data-controlled-by="${space.controlledBy !== null ? space.controlledBy : ''}">
+        <span class="tile-emoji">${emoji}</span>
+        ${stackIndicator}
+      </div>
+    `;
+  }
+
+  attachCellListeners() {
+    this.shadowRoot.querySelectorAll('.grid-cell').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const x = parseInt(cell.dataset.x);
+        const y = parseInt(cell.dataset.y);
+        this.dispatchEvent(new CustomEvent('cell-selected', {
+          detail: { x, y },
+          bubbles: true,
+          composed: true
+        }));
+      });
+    });
+  }
 }
+
+customElements.define('game-board', GameBoard);
 ```
 
-### Color Scheme for Player Differentiation
-```zig
-const PlayerColors = enum {
-    player1_primary,    // Bright Red
-    player1_secondary,  // Light Red
-    player2_primary,    // Bright Blue
-    player2_secondary,  // Light Blue
-    player3_primary,    // Bright Green (if 3+ players)
-    player3_secondary,  // Light Green
-    player4_primary,    // Bright Yellow
-    player4_secondary,  // Light Yellow
+#### 4.3 Player Hand Component
 
-    neutral,            // White/Gray
-    highlight,          // Bright Cyan
-    warning,            // Bright Magenta
-    error,              // Bright Red
+```javascript
+class PlayerHand extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this.state = null;
+    this.selectedIndex = null;
+  }
 
-    // Territory borders use primary colors
-    // Tiles use emojis (naturally colored)
-    // Stack indicators use secondary colors
-};
-```
+  updateState(state, selectedIndex = null) {
+    this.state = state;
+    this.selectedIndex = selectedIndex;
+    this.render();
+  }
 
-### Input State Machine
-```zig
-const InputMode = enum {
-    TILE_SELECTION,      // Choosing tile from hand
-    POSITION_SELECTION,  // Placing tile on board
-    EFFECT_SELECTION,    // Choosing which effects to activate
-    TARGET_SELECTION,    // Targeting for effects
-    CONFIRMATION,        // Confirm/cancel action
-};
+  render() {
+    if (!this.state) return;
 
-fn handleKeyPress(key: Key, state: *GameState) !void {
-    switch (state.input_mode) {
-        .TILE_SELECTION => try handleTileSelection(key, state),
-        .POSITION_SELECTION => try handlePositionSelection(key, state),
-        .EFFECT_SELECTION => try handleEffectSelection(key, state),
-        .TARGET_SELECTION => try handleTargetSelection(key, state),
-        .CONFIRMATION => try handleConfirmation(key, state),
-    }
+    const currentPlayer = this.state.currentPlayer;
+    const tiles = currentPlayer.hand.map((tile, i) =>
+      this.renderTile(tile, i)
+    ).join('');
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .hand-container {
+          grid-area: hand;
+          display: flex;
+          gap: 0.75rem;
+          padding: 1.5rem;
+          background: linear-gradient(to bottom, rgba(15, 52, 96, 0.8), rgba(26, 26, 46, 0.8));
+          border-radius: 12px;
+          overflow-x: auto;
+          box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .tile-card {
+          flex: 1;
+          min-width: 100px;
+          max-width: 140px;
+          padding: 1rem;
+          background: linear-gradient(135deg, #1e3a5f 0%, #2a475e 100%);
+          border: 3px solid #3a5a7f;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          text-align: center;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .tile-card::before {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: linear-gradient(
+            45deg,
+            transparent,
+            rgba(255, 255, 255, 0.1),
+            transparent
+          );
+          transform: rotate(45deg);
+          transition: all 0.5s;
+        }
+
+        .tile-card:hover::before {
+          left: 100%;
+        }
+
+        .tile-card:hover {
+          transform: translateY(-10px) scale(1.05);
+          border-color: #5a8abf;
+          box-shadow: 0 10px 30px rgba(74, 158, 255, 0.4);
+        }
+
+        .tile-card.selected {
+          border-color: #4CAF50;
+          background: linear-gradient(135deg, #2a4a2a 0%, #3a5a3a 100%);
+          box-shadow: 0 10px 40px rgba(76, 175, 80, 0.6);
+          transform: translateY(-10px) scale(1.1);
+        }
+
+        .tile-emoji {
+          font-size: 3.5rem;
+          display: block;
+          margin-bottom: 0.5rem;
+          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+
+        .tile-name {
+          font-size: 0.85rem;
+          color: #b0c4de;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+        }
+
+        .tile-shortcut {
+          font-size: 0.7rem;
+          color: #6a7a8a;
+          background: rgba(0, 0, 0, 0.3);
+          padding: 2px 8px;
+          border-radius: 8px;
+          display: inline-block;
+        }
+
+        .hand-title {
+          position: absolute;
+          top: -30px;
+          left: 0;
+          font-size: 0.9rem;
+          color: #8a9aaa;
+          font-weight: 600;
+        }
+      </style>
+      <div class="hand-container">
+        ${tiles}
+      </div>
+    `;
+
+    this.attachTileListeners();
+  }
+
+  renderTile(tile, index) {
+    const selected = index === this.selectedIndex ? 'selected' : '';
+    const tileNames = {
+      '🚩': 'Flag',
+      '🌱': 'Seedling',
+      '➡️': 'Move Right',
+      '💣': 'Bomb',
+      '🪨': 'Rock',
+      '↔️': 'Move H',
+      '🔫': 'Gun'
+      // Add more as needed
+    };
+
+    return `
+      <div class="tile-card ${selected}" data-index="${index}">
+        <span class="tile-emoji">${tile.emoji}</span>
+        <div class="tile-name">${tileNames[tile.emoji] || 'Tile'}</div>
+        <div class="tile-shortcut">[${index + 1}]</div>
+      </div>
+    `;
+  }
+
+  attachTileListeners() {
+    this.shadowRoot.querySelectorAll('.tile-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const index = parseInt(card.dataset.index);
+        this.dispatchEvent(new CustomEvent('tile-selected', {
+          detail: { index },
+          bubbles: true,
+          composed: true
+        }));
+      });
+    });
+  }
 }
+
+customElements.define('player-hand', PlayerHand);
+```
+
+#### 4.4 Score Panel Component
+
+```javascript
+class ScorePanel extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
+
+  updateState(state) {
+    this.render(state);
+  }
+
+  render(state) {
+    if (!state) return;
+
+    const playerScores = state.players.map((player, i) =>
+      this.renderPlayerScore(player, state.currentPlayerIndex === i)
+    ).join('');
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .score-panel {
+          grid-area: sidebar;
+          padding: 1.5rem;
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 12px;
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        h3 {
+          margin: 0 0 1rem 0;
+          color: #4a9eff;
+          font-size: 1.2rem;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .player-score {
+          margin-bottom: 1rem;
+          padding: 1rem;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.05);
+          transition: all 0.3s;
+          border: 2px solid transparent;
+        }
+
+        .player-score.active {
+          background: rgba(74, 158, 255, 0.2);
+          border-color: #4a9eff;
+          box-shadow: 0 0 20px rgba(74, 158, 255, 0.3);
+        }
+
+        .player-header {
+          display: flex;
+          align-items: center;
+          margin-bottom: 0.5rem;
+        }
+
+        .score-emoji {
+          font-size: 2rem;
+          margin-right: 0.75rem;
+        }
+
+        .player-name {
+          font-size: 1.1rem;
+          font-weight: bold;
+          color: #fff;
+        }
+
+        .player-score-value {
+          font-size: 2rem;
+          font-weight: bold;
+          color: #4a9eff;
+          margin-left: auto;
+        }
+
+        .player-stats {
+          font-size: 0.85rem;
+          color: #aaa;
+          margin-top: 0.5rem;
+        }
+
+        .stat-row {
+          display: flex;
+          justify-content: space-between;
+          margin: 0.25rem 0;
+        }
+
+        .turn-info {
+          margin-top: 1.5rem;
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 8px;
+          font-size: 0.9rem;
+        }
+
+        .turn-label {
+          color: #888;
+        }
+
+        .turn-value {
+          color: #4a9eff;
+          font-weight: bold;
+        }
+      </style>
+      <div class="score-panel">
+        <h3>🏆 Scoreboard</h3>
+        ${playerScores}
+        <div class="turn-info">
+          <div class="stat-row">
+            <span class="turn-label">Turn:</span>
+            <span class="turn-value">${state.turnNumber + 1} / ${state.config.maxTurns}</span>
+          </div>
+          <div class="stat-row">
+            <span class="turn-label">Round:</span>
+            <span class="turn-value">${state.roundNumber}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  renderPlayerScore(player, isActive) {
+    return `
+      <div class="player-score ${isActive ? 'active' : ''}">
+        <div class="player-header">
+          <span class="score-emoji">${player.emoji}</span>
+          <span class="player-name">${player.name}</span>
+          <span class="player-score-value">${player.score}</span>
+        </div>
+        <div class="player-stats">
+          <div class="stat-row">
+            <span>Spaces:</span>
+            <span>${player.controlledSpaces}</span>
+          </div>
+          <div class="stat-row">
+            <span>Tiles Played:</span>
+            <span>${player.statistics.tilesPlaced}</span>
+          </div>
+          <div class="stat-row">
+            <span>Effects:</span>
+            <span>${player.statistics.effectsActivated}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+customElements.define('score-panel', ScorePanel);
+```
+
+#### 4.5 Game Status Component
+
+```javascript
+class GameStatus extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
+
+  updateState(state) {
+    this.render(state);
+  }
+
+  render(state) {
+    if (!state) return;
+
+    const phaseNames = {
+      [GamePhase.PLACEMENT]: 'Place a Tile',
+      [GamePhase.EFFECT_ACTIVATION]: 'Activate Effects',
+      [GamePhase.DRAW]: 'Draw Tile',
+      [GamePhase.SCORING]: 'Scoring',
+      [GamePhase.GAME_OVER]: 'Game Over'
+    };
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .status-bar {
+          grid-area: header;
+          padding: 1rem 1.5rem;
+          background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+          border-radius: 12px;
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .game-title {
+          font-size: 1.8rem;
+          font-weight: bold;
+          background: linear-gradient(135deg, #4a9eff 0%, #82cfff 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .status-info {
+          display: flex;
+          gap: 2rem;
+          align-items: center;
+        }
+
+        .status-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .status-label {
+          font-size: 0.7rem;
+          color: #888;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .status-value {
+          font-size: 1.1rem;
+          color: #4a9eff;
+          font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+          .status-bar {
+            flex-direction: column;
+            gap: 1rem;
+          }
+        }
+      </style>
+      <div class="status-bar">
+        <div class="game-title">🎮 EMOJINAL</div>
+        <div class="status-info">
+          <div class="status-item">
+            <div class="status-label">Current Player</div>
+            <div class="status-value">${state.currentPlayer.emoji} ${state.currentPlayer.name}</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">Phase</div>
+            <div class="status-value">${phaseNames[state.phase]}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+customElements.define('game-status', GameStatus);
 ```
 
 ---
 
-## Design Decisions Needed
+### Phase 5: Project Structure
 
-### Critical Questions to Resolve
-
-1. **Scoring System**:
-   - How many points per controlled space?
-   - Do different control types (🚩 vs ♾️ vs 💩) have different values?
-   - How much is the end-game bonus?
-   - Are there points for tile placement/effects beyond control?
-
-2. **Deck Size & Composition**:
-   - Total number of tiles in deck?
-   - Rarity distribution?
-   - Should deck be balanced per-player or shared?
-
-3. **Stack Mechanics**:
-   - Maximum stack height?
-   - Can players place tiles on opponent-controlled spaces?
-   - What determines control when stack has mixed ownership?
-   - Does top tile always control, or do certain tiles override?
-
-4. **Movement Rules**:
-   - Can stacks move to occupied spaces (stack on top)?
-   - Moving off board: invalid or stop at edge?
-   - Does moving a stack change control of source position?
-   - Can you move opponent's stacks?
-
-5. **Destruction Resolution**:
-   - Destroying stack: all tiles or just top?
-   - What happens to indestructible tiles in destroyed stack?
-   - Can you destroy your own tiles?
-   - Priority when multiple destruction effects conflict?
-
-6. **Plant Evolution**:
-   - Is evolution automatic or player choice?
-   - Player chooses which evolution path?
-   - Does plant need to stay on top of stack to evolve?
-   - What happens if plant is covered before evolution?
-
-7. **♾️ Permanent Claim**:
-   - Can it be destroyed by anything?
-   - Can it be moved?
-   - Does it prevent other tiles being placed on that space?
-
-8. **➖ Negation**:
-   - What exactly does "negates a claimed space" mean?
-   - Does it remove control, points, both?
-   - Does it prevent future claims?
-   - "Sets flag for user that placed it" - what flag?
-
-9. **End of Round vs End of Turn**:
-   - Round = all players took 1 turn?
-   - Or round = X number of turns?
-   - When do zombies crawl (🧟)?
-   - When do plants evolve?
-   - When are scores tallied?
-
-10. **Game End Conditions**:
-    - Only turn limit, or also:
-      - Board full?
-      - Deck empty?
-      - One player controls X% of board?
+```
+emojinal/
+├── index.html                    # Main HTML file
+├── css/
+│   └── main.css                  # Global styles
+├── js/
+│   ├── main.js                   # Entry point
+│   ├── game/
+│   │   ├── engine.js             # GameEngine class
+│   │   ├── state.js              # GameState, Player, etc.
+│   │   ├── tile.js               # Tile class
+│   │   ├── board.js              # GameBoard, GridSpace
+│   │   ├── effects.js            # EffectEngine
+│   │   ├── scoring.js            # ScoringEngine
+│   │   ├── turn-manager.js       # TurnManager
+│   │   └── ai.js                 # AI player (future)
+│   ├── components/
+│   │   ├── game-app.js           # Main game component
+│   │   ├── game-board.js         # Board component
+│   │   ├── player-hand.js        # Hand component
+│   │   ├── score-panel.js        # Score component
+│   │   ├── game-status.js        # Status component
+│   │   └── effect-selector.js    # Effect selection UI
+│   └── utils/
+│       ├── config.js             # Configuration
+│       └── tile-data.js          # Tile definitions loader
+├── data/
+│   ├── tiles.json                # Tile definitions
+│   └── config.json               # Game configuration
+├── assets/
+│   └── sounds/                   # Sound effects (future)
+├── tests/
+│   ├── game.test.js              # Game logic tests
+│   └── components.test.js        # Component tests
+├── Emojis                        # Original emoji definitions
+├── GAME_ENGINE_PLAN_WEB.md       # This document
+└── package.json                  # NPM dependencies (if any)
+```
 
 ---
 
-## Implementation Roadmap
+### Phase 6: Implementation Roadmap
 
-### Milestone 1: Core Engine (Weeks 1-3)
-- ✅ Data structures defined
-- ✅ Basic game state management
-- ✅ Tile placement logic
-- ✅ Simple effects (claim, basic movement)
-- ✅ Turn management
-- ✅ Basic scoring
-- ✅ CLI interface for testing
+#### Milestone 1: Core Engine (Week 1-2)
+- ✅ Implement all data structures (Tile, GridSpace, GameBoard, Player, GameState)
+- ✅ Implement GameEngine initialization
+- ✅ Implement basic TurnManager
+- ✅ Implement simple effects (claim, basic movement)
+- ✅ Create tile data file from Emojis
 
-**Deliverable**: 2-player game with basic tiles, no complex effects
+**Deliverable**: Console-based game that can initialize and process basic turns
 
-### Milestone 2: Effect System (Weeks 4-6)
-- ✅ All movement effects
-- ✅ Stack manipulation effects
-- ✅ Basic destruction (🔫, 💣)
-- ✅ Effect targeting system
-- ✅ Effect validation
+#### Milestone 2: Web Components (Week 3)
+- ✅ Create all Web Components (game-app, game-board, player-hand, score-panel, game-status)
+- ✅ Implement event-driven architecture
+- ✅ Add CSS styling and animations
+- ✅ Test component interactions
 
-**Deliverable**: Full movement and basic destruction working
+**Deliverable**: Playable 2-player game with basic tiles in browser
 
-### Milestone 3: Advanced Effects (Weeks 7-10)
-- ✅ Plant evolution system
-- ✅ Resource system (🪨, ⛏️, 🗿)
-- ✅ Biohazard system
-- ✅ Advanced destruction (🧨, 🌪️, ☣️)
-- ✅ Special tiles (🧟, 🎲, ➖)
+#### Milestone 3: Complete Effect System (Week 4-5)
+- ✅ Implement all movement effects
+- ✅ Implement stack manipulation
+- ✅ Implement destruction effects
+- ✅ Implement plant evolution
+- ✅ Implement biohazard system
 
-**Deliverable**: All tile effects implemented and tested
+**Deliverable**: All 44 tiles fully functional
 
-### Milestone 4: UI Development (Weeks 11-14)
-- ✅ Improved CLI or Web UI
-- ✅ Visual board representation
-- ✅ Intuitive tile selection
-- ✅ Effect targeting interface
-- ✅ Stack visualization
-- ✅ Score display
+#### Milestone 4: Polish & UX (Week 6)
+- ✅ Add animations for tile placement and effects
+- ✅ Improve visual feedback
+- ✅ Add sound effects (optional)
+- ✅ Implement effect selection UI
+- ✅ Add game over screen
+- ✅ Mobile responsiveness
 
-**Deliverable**: Playable game with good UX
+**Deliverable**: Polished, enjoyable game experience
 
-### Milestone 5: AI & Balance (Weeks 15-17)
-- ✅ Basic AI opponent
-- ✅ Game balance testing
-- ✅ Tile distribution tuning
-- ✅ Scoring adjustments
-- ✅ Bug fixes from playtesting
+#### Milestone 5: AI & Testing (Week 7)
+- ✅ Implement basic AI opponent
+- ✅ Write comprehensive tests
+- ✅ Balance gameplay
+- ✅ Bug fixes
 
-**Deliverable**: Balanced game with AI opponent
+**Deliverable**: Complete game with AI
 
-### Milestone 6: Polish (Weeks 18-20)
-- ✅ Animations and effects
-- ✅ Sound design
-- ✅ Save/load game
-- ✅ Statistics and achievements
-- ✅ Tutorial mode
-- ✅ Final bug fixes
+#### Milestone 6: Deployment (Week 8)
+- ✅ Optimize performance
+- ✅ Add PWA support (optional)
+- ✅ Deploy to hosting (Netlify, Vercel, GitHub Pages)
+- ✅ Documentation
 
-**Deliverable**: Release-ready game
-
-### Milestone 7: Multiplayer (Future)
-- ✅ Network architecture
-- ✅ Server implementation
-- ✅ Sync logic
-- ✅ Matchmaking
-- ✅ Spectator mode
-
-**Deliverable**: Online multiplayer support
+**Deliverable**: Deployed, playable game
 
 ---
 
-## Risk Assessment
+## Technology Stack Summary
 
-### High Risk
-1. **Game Balance**: With 44+ unique tiles, balancing will be extremely complex
-   - Mitigation: Extensive playtesting, iterative adjustments, data-driven balance
+**Frontend**:
+- **Web Components**: Native custom elements
+- **JavaScript (ES6+)**: Modern JavaScript features
+- **CSS Grid/Flexbox**: Responsive layouts
+- **CSS Animations**: Smooth transitions and effects
 
-2. **Effect Interactions**: Complex combos may create unintended exploits
-   - Mitigation: Comprehensive unit tests, integration tests for all combos
+**Optional Enhancements**:
+- **Lit**: Lightweight web components library (if needed)
+- **Vite**: Fast build tool and dev server
+- **Vitest**: Testing framework
+- **TypeScript**: Type safety (migrate later if desired)
 
-3. **Performance**: Large board + many effects could cause lag
-   - Mitigation: Optimize critical paths, consider performance profiling early
-
-### Medium Risk
-1. **Scope Creep**: Feature-rich design could delay completion
-   - Mitigation: Strict milestone adherence, MVP-first approach
-
-2. **UI Complexity**: Visualizing stacks and effects clearly is challenging
-   - Mitigation: User testing, iterative UI improvements
-
-3. **AI Quality**: Good AI is hard with complex game state
-   - Mitigation: Start simple, improve iteratively, consider ML approaches later
-
-### Low Risk
-1. **Technical Implementation**: Core game logic is straightforward
-2. **Testing**: Game rules are well-defined and testable
-
----
-
-## Success Metrics
-
-### MVP (Minimum Viable Product)
-- ✅ 2-player local game works
-- ✅ All tile effects implemented
-- ✅ Basic scoring functional
-- ✅ Game can be completed
-- ✅ No game-breaking bugs
-
-### 1.0 Release
-- ✅ Polished UI
-- ✅ AI opponent (medium difficulty)
-- ✅ Balanced gameplay (no dominant strategy)
-- ✅ Save/load functionality
-- ✅ Tutorial for new players
-
-### Future Goals
-- ✅ Online multiplayer
-- ✅ Mobile version
-- ✅ Tournament mode
-- ✅ Ranked matchmaking
-- ✅ Custom tile creation
-- ✅ Map editor
+**No Framework Required**: Pure vanilla JavaScript with Web Components
 
 ---
 
 ## Next Steps
 
-1. **Review and Approve Plan**: Stakeholder review of this document
-2. **Resolve Design Decisions**: Answer critical questions listed above
-3. **Set Up Development Environment**: Choose tech stack, initialize project
-4. **Create Tile Definition Format**: Convert Emojis file to structured data
-5. **Implement Phase 1**: Build core data structures
-6. **Begin Milestone 1**: Start core engine development
+1. ✅ Review this updated plan
+2. ✅ Set up project structure
+3. ✅ Create `index.html` and basic file structure
+4. ✅ Convert Emojis file to JSON format
+5. ✅ Implement core data structures
+6. ✅ Start with Milestone 1
 
----
-
-## Appendix: Tile Reference Quick Guide
-
-### Claim & Control (7 tiles)
-- 🚩 Claim space
-- ➖ Negate space, set flag
-- ♾️ Permanent control
-- 🧟 Zombie (crawls to top)
-- ☠️ Claim + negate zombies
-- 💩 Claim space (biohazard)
-- 🗿 Indestructible claim
-
-### Movement (14 tiles)
-- ↔️ Left or right (choice)
-- ↕️ Up or down (choice)
-- ➡️ Right X spaces
-- ⬅️ Left X spaces
-- ⬆️ Up X spaces
-- ⬇️ Down X spaces
-- ↖️ Diagonal up-left X spaces
-- ↙️ Diagonal down-left X spaces
-- ↘️ Diagonal down-right X spaces
-- ↗️ Diagonal up-right X spaces
-
-### Stack Manipulation (4 tiles)
-- ⏫️ Bottom to top
-- ⏬️ Top to bottom
-- ⏹️ Stop all effects
-- 🔄 Reshuffle stack
-
-### Plants (9 tiles)
-- 🌱 Seedling (evolves)
-- 🌿 Intermediate (evolves)
-- 🍀 Clover (draw extra tile)
-- 🌸 Flower (combo with bee)
-- 🐝 Bee (plant seedling per flower)
-- 🌵 Cactus (hard to destroy)
-- 🌳 Tree (plant extra seedling)
-- 🪓 Axe (chop plants)
-- 🍄 Mushroom (spread, combo with stump)
-
-### Resources (3 tiles)
-- 🪨 Rock (hard to destroy)
-- ⛏️ Pickaxe (destroy rock or make moai)
-- 🗿 Moai (indestructible)
-
-### Destruction (5 tiles)
-- 💣 Bomb (1 radius, place flag)
-- 🔫 Gun (destroy 1 stack)
-- 🧨 Dynamite (3 radius, claim 4)
-- 🌪️ Tornado (path destruction)
-- ☣️ Biohazard (destroy all, claim 4)
-
-### Biohazard System (6 tiles)
-- ☢️ Radioactive (poop → germs)
-- 🚽 Toilet (destroy row/column, leave poop)
-- 💩 Poop (claim)
-- 🪰 Fly (spread poop/contagion)
-- 🦠 Germ (spread germs)
-- 💊 Pill (cure germs → flags)
-
-### Special (1 tile)
-- 🎲 Dice (random tile)
-
-**Total: 44 unique tiles**
-
----
-
-*This plan is a living document and should be updated as design decisions are made and implementation progresses.*
+This web-based approach provides:
+- ✨ Modern, beautiful UI
+- 📱 Mobile-friendly
+- 🚀 Easy to deploy and share
+- 🎨 Rich animations and visual effects
+- 🔧 Simple to develop and maintain
