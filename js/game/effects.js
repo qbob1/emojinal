@@ -190,6 +190,55 @@ export class EffectEngine {
     return state;
   }
 
+  static dynamiteExplode(state, center, playerId) {
+    const destroyed = [];
+    const radius = 3;
+
+    // Destroy all tiles in radius 3 (radial explosion)
+    for (let y = center.y - radius; y <= center.y + radius; y++) {
+      for (let x = center.x - radius; x <= center.x + radius; x++) {
+        const distance = Math.max(Math.abs(x - center.x), Math.abs(y - center.y));
+        if (distance <= radius && distance > 0) { // Don't destroy center
+          const space = state.board.getSpace(x, y);
+          if (space) {
+            state = this.destroyStack(state, { x, y });
+            destroyed.push({ x, y });
+          }
+        }
+      }
+    }
+
+    // Place flag at center
+    const centerSpace = state.board.getSpace(center.x, center.y);
+    if (centerSpace) {
+      const flag = { emoji: '🚩', owner: playerId, type: 'claim', effects: ['claim_space'], metadata: {} };
+      centerSpace.addTile(flag);
+      centerSpace.controlledBy = playerId;
+    }
+
+    // Place flags at 3 more nearby destroyed positions
+    const flagPositions = destroyed.slice(0, 3);
+    flagPositions.forEach(pos => {
+      const space = state.board.getSpace(pos.x, pos.y);
+      if (space) {
+        const flag = { emoji: '🚩', owner: playerId, type: 'claim', effects: ['claim_space'], metadata: {} };
+        space.addTile(flag);
+        space.controlledBy = playerId;
+      }
+    });
+
+    // Mark explosion for animation (UI can read this)
+    if (!state.animations) state.animations = [];
+    state.animations.push({
+      type: 'explosion',
+      position: center,
+      radius: 3,
+      timestamp: Date.now()
+    });
+
+    return state;
+  }
+
   static isIndestructible(tile) {
     // Moai (🗿) is always indestructible
     if (tile.emoji === '🗿') return true;
@@ -513,6 +562,15 @@ export class EffectEngine {
       space.addTile(flag);
     });
 
+    // Add massive explosion animation for the entire board
+    if (!state.animations) state.animations = [];
+    state.animations.push({
+      type: 'explosion',
+      position: { x: Math.floor(state.board.width / 2), y: Math.floor(state.board.height / 2) },
+      radius: Math.max(state.board.width, state.board.height),
+      timestamp: Date.now()
+    });
+
     return state;
   }
 
@@ -628,13 +686,22 @@ export class EffectEngine {
         return this.shuffleStack(state, position);
 
       case 'bomb_explode':
-        return this.destroyRadius(state, position, 1, playerId, 0);
+        state = this.destroyRadius(state, position, 1, playerId, 0);
+        // Add explosion animation
+        if (!state.animations) state.animations = [];
+        state.animations.push({
+          type: 'explosion',
+          position: position,
+          radius: 1,
+          timestamp: Date.now()
+        });
+        return state;
 
       case 'destroy_single':
         return this.destroyStack(state, position);
 
       case 'dynamite_explode':
-        return this.destroyRadius(state, position, 3, playerId, 4);
+        return this.dynamiteExplode(state, position, playerId);
 
       case 'plant_evolve':
         return this.evolvePlant(state, position);

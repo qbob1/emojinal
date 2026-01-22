@@ -8,6 +8,42 @@ class GameBoard extends HTMLElement {
   updateState(state) {
     this.state = state;
     this.render();
+    this.handleAnimations();
+  }
+
+  handleAnimations() {
+    if (!this.state || !this.state.animations || this.state.animations.length === 0) return;
+
+    this.state.animations.forEach(animation => {
+      if (animation.type === 'explosion') {
+        this.playExplosionAnimation(animation.position, animation.radius);
+      }
+    });
+
+    // Clear animations after playing
+    this.state.animations = [];
+  }
+
+  playExplosionAnimation(center, radius) {
+    // Add explosion effect to all cells in radius
+    for (let y = center.y - radius; y <= center.y + radius; y++) {
+      for (let x = center.x - radius; x <= center.x + radius; x++) {
+        const distance = Math.max(Math.abs(x - center.x), Math.abs(y - center.y));
+        if (distance <= radius) {
+          const cell = this.shadowRoot.querySelector(`.grid-cell[data-x="${x}"][data-y="${y}"]`);
+          if (cell) {
+            // Add explosion class with delay based on distance
+            const delay = distance * 100;
+            setTimeout(() => {
+              cell.classList.add('exploding');
+              setTimeout(() => {
+                cell.classList.remove('exploding');
+              }, 600);
+            }, delay);
+          }
+        }
+      }
+    }
   }
 
   render() {
@@ -142,6 +178,35 @@ class GameBoard extends HTMLElement {
             transform: scale(1) rotate(0deg);
             opacity: 1;
           }
+        }
+
+        @keyframes explode {
+          0% {
+            transform: scale(1);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            box-shadow: 0 0 0 rgba(255, 100, 0, 0);
+          }
+          30% {
+            transform: scale(1.3);
+            background: linear-gradient(135deg, #ff6600 0%, #ff3300 100%);
+            box-shadow: 0 0 30px rgba(255, 100, 0, 0.8);
+            border-color: #ff6600 !important;
+          }
+          60% {
+            transform: scale(1.4);
+            background: linear-gradient(135deg, #ffaa00 0%, #ff6600 100%);
+            box-shadow: 0 0 40px rgba(255, 150, 0, 1);
+          }
+          100% {
+            transform: scale(1);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            box-shadow: 0 0 0 rgba(255, 100, 0, 0);
+          }
+        }
+
+        .grid-cell.exploding {
+          animation: explode 0.6s ease-out;
+          z-index: 10;
         }
 
         .tile-emoji {
