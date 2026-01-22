@@ -3,6 +3,28 @@
 ## Overview
 A multiplayer grid-based tile placement game where players strategically place emoji tiles with unique abilities to control territory and maximize their score.
 
+## Key Features
+
+### ⚙️ Customizable Game Settings
+- **Board Size**: Adjustable from 6x6 to 15x15
+- **Turn Count**: Configurable from 10 to 100 turns
+- **Game Modes**: Local multiplayer, vs AI, or Online PvP (future)
+
+### 🤖 AI Opponent
+- **Three Difficulty Levels**:
+  - **Easy**: Random valid moves
+  - **Medium**: Greedy strategy with position evaluation
+  - **Hard**: Minimax with alpha-beta pruning
+- Perfect for testing and solo play
+
+### 🌐 Network-Ready Architecture
+- WebSocket client/server infrastructure designed from the start
+- State serialization for network transmission
+- Room-based matchmaking system
+- Ready to deploy multiplayer when needed
+
+---
+
 ## Game Summary
 
 ### Core Mechanics
@@ -160,13 +182,30 @@ class GameState {
 }
 
 class GameConfig {
-  constructor() {
-    this.boardSize = 10;         // NxN grid
-    this.maxTurns = 50;          // Game ends after X turns
-    this.startingHandSize = 5;   // Default: 5
-    this.maxHandSize = 7;        // Maximum tiles in hand
-    this.endGameBonus = 10;      // Bonus for most controlled spaces
-    this.playerCount = 2;        // 2-4 players
+  constructor(options = {}) {
+    this.boardSize = options.boardSize || 10;         // NxN grid (customizable: 6-15)
+    this.maxTurns = options.maxTurns || 50;           // Game ends after X turns (customizable: 10-100)
+    this.startingHandSize = options.startingHandSize || 5;   // Default: 5
+    this.maxHandSize = options.maxHandSize || 7;     // Maximum tiles in hand
+    this.endGameBonus = options.endGameBonus || 10;  // Bonus for most controlled spaces
+    this.playerCount = options.playerCount || 2;     // 2-4 players
+    this.gameMode = options.gameMode || 'local';     // 'local', 'ai', 'online'
+    this.difficulty = options.difficulty || 'medium'; // AI difficulty: 'easy', 'medium', 'hard'
+  }
+
+  // Validation
+  static validate(options) {
+    const errors = [];
+
+    if (options.boardSize < 6 || options.boardSize > 15) {
+      errors.push('Board size must be between 6 and 15');
+    }
+
+    if (options.maxTurns < 10 || options.maxTurns > 100) {
+      errors.push('Max turns must be between 10 and 100');
+    }
+
+    return errors.length === 0 ? { valid: true } : { valid: false, errors };
   }
 }
 ```
@@ -1322,9 +1361,1076 @@ class GameStatus extends HTMLElement {
 customElements.define('game-status', GameStatus);
 ```
 
+#### 4.6 Game Setup Component
+
+```javascript
+class GameSetup extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this.config = {
+      boardSize: 10,
+      maxTurns: 50,
+      gameMode: 'ai',  // 'local', 'ai', 'online'
+      difficulty: 'medium',
+      playerNames: ['Player 1', 'Player 2']
+    };
+  }
+
+  render() {
+    this.shadowRoot.innerHTML = `
+      <style>
+        .setup-container {
+          max-width: 600px;
+          margin: 2rem auto;
+          padding: 2rem;
+          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+          border-radius: 16px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+          color: #fff;
+        }
+
+        h2 {
+          margin: 0 0 2rem 0;
+          text-align: center;
+          font-size: 2rem;
+          background: linear-gradient(135deg, #4a9eff 0%, #82cfff 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .form-group {
+          margin-bottom: 1.5rem;
+        }
+
+        label {
+          display: block;
+          margin-bottom: 0.5rem;
+          color: #b0c4de;
+          font-weight: 600;
+        }
+
+        input[type="range"] {
+          width: 100%;
+          height: 6px;
+          background: #2a2a3e;
+          border-radius: 3px;
+          outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+          width: 20px;
+          height: 20px;
+          background: #4a9eff;
+          border-radius: 50%;
+          cursor: pointer;
+        }
+
+        .range-value {
+          display: inline-block;
+          margin-left: 1rem;
+          color: #4a9eff;
+          font-weight: bold;
+          font-size: 1.2rem;
+        }
+
+        .mode-selector {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1rem;
+          margin-top: 0.5rem;
+        }
+
+        .mode-button {
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 2px solid #3a5a7f;
+          border-radius: 8px;
+          cursor: pointer;
+          text-align: center;
+          transition: all 0.3s;
+          color: #fff;
+        }
+
+        .mode-button:hover {
+          background: rgba(74, 158, 255, 0.2);
+          border-color: #4a9eff;
+        }
+
+        .mode-button.selected {
+          background: rgba(74, 158, 255, 0.3);
+          border-color: #4a9eff;
+          box-shadow: 0 0 20px rgba(74, 158, 255, 0.4);
+        }
+
+        .difficulty-selector {
+          display: flex;
+          gap: 1rem;
+          margin-top: 0.5rem;
+        }
+
+        .difficulty-button {
+          flex: 1;
+          padding: 0.75rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 2px solid #3a5a7f;
+          border-radius: 8px;
+          cursor: pointer;
+          text-align: center;
+          transition: all 0.3s;
+          color: #fff;
+        }
+
+        .difficulty-button:hover {
+          background: rgba(76, 175, 80, 0.2);
+          border-color: #4caf50;
+        }
+
+        .difficulty-button.selected {
+          background: rgba(76, 175, 80, 0.3);
+          border-color: #4caf50;
+        }
+
+        .start-button {
+          width: 100%;
+          padding: 1.5rem;
+          margin-top: 2rem;
+          background: linear-gradient(135deg, #4a9eff 0%, #2196f3 100%);
+          border: none;
+          border-radius: 12px;
+          color: #fff;
+          font-size: 1.2rem;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s;
+          box-shadow: 0 4px 16px rgba(74, 158, 255, 0.4);
+        }
+
+        .start-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 24px rgba(74, 158, 255, 0.6);
+        }
+
+        .start-button:active {
+          transform: translateY(0);
+        }
+      </style>
+      <div class="setup-container">
+        <h2>🎮 Game Setup</h2>
+
+        <div class="form-group">
+          <label>
+            Board Size: <span class="range-value" id="boardSizeValue">10x10</span>
+          </label>
+          <input type="range" id="boardSize" min="6" max="15" value="10" />
+        </div>
+
+        <div class="form-group">
+          <label>
+            Max Turns: <span class="range-value" id="maxTurnsValue">50</span>
+          </label>
+          <input type="range" id="maxTurns" min="10" max="100" step="5" value="50" />
+        </div>
+
+        <div class="form-group">
+          <label>Game Mode</label>
+          <div class="mode-selector">
+            <div class="mode-button" data-mode="local">
+              👥<br>Local<br>Multiplayer
+            </div>
+            <div class="mode-button selected" data-mode="ai">
+              🤖<br>vs<br>Computer
+            </div>
+            <div class="mode-button" data-mode="online">
+              🌐<br>Online<br>PvP
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" id="difficultyGroup">
+          <label>AI Difficulty</label>
+          <div class="difficulty-selector">
+            <div class="difficulty-button" data-difficulty="easy">
+              😊 Easy
+            </div>
+            <div class="difficulty-button selected" data-difficulty="medium">
+              😐 Medium
+            </div>
+            <div class="difficulty-button" data-difficulty="hard">
+              😈 Hard
+            </div>
+          </div>
+        </div>
+
+        <button class="start-button">Start Game</button>
+      </div>
+    `;
+
+    this.attachEventListeners();
+  }
+
+  attachEventListeners() {
+    // Board size slider
+    const boardSizeSlider = this.shadowRoot.getElementById('boardSize');
+    const boardSizeValue = this.shadowRoot.getElementById('boardSizeValue');
+    boardSizeSlider.addEventListener('input', (e) => {
+      const size = e.target.value;
+      boardSizeValue.textContent = `${size}x${size}`;
+      this.config.boardSize = parseInt(size);
+    });
+
+    // Max turns slider
+    const maxTurnsSlider = this.shadowRoot.getElementById('maxTurns');
+    const maxTurnsValue = this.shadowRoot.getElementById('maxTurnsValue');
+    maxTurnsSlider.addEventListener('input', (e) => {
+      const turns = e.target.value;
+      maxTurnsValue.textContent = turns;
+      this.config.maxTurns = parseInt(turns);
+    });
+
+    // Game mode buttons
+    this.shadowRoot.querySelectorAll('.mode-button').forEach(button => {
+      button.addEventListener('click', () => {
+        this.shadowRoot.querySelectorAll('.mode-button').forEach(b =>
+          b.classList.remove('selected')
+        );
+        button.classList.add('selected');
+        this.config.gameMode = button.dataset.mode;
+
+        // Show/hide difficulty based on mode
+        const difficultyGroup = this.shadowRoot.getElementById('difficultyGroup');
+        difficultyGroup.style.display =
+          this.config.gameMode === 'ai' ? 'block' : 'none';
+      });
+    });
+
+    // Difficulty buttons
+    this.shadowRoot.querySelectorAll('.difficulty-button').forEach(button => {
+      button.addEventListener('click', () => {
+        this.shadowRoot.querySelectorAll('.difficulty-button').forEach(b =>
+          b.classList.remove('selected')
+        );
+        button.classList.add('selected');
+        this.config.difficulty = button.dataset.difficulty;
+      });
+    });
+
+    // Start button
+    this.shadowRoot.querySelector('.start-button').addEventListener('click', () => {
+      this.dispatchEvent(new CustomEvent('game-start', {
+        detail: this.config,
+        bubbles: true,
+        composed: true
+      }));
+    });
+  }
+
+  connectedCallback() {
+    this.render();
+  }
+}
+
+customElements.define('game-setup', GameSetup);
+```
+
 ---
 
-### Phase 5: Project Structure
+### Phase 5: AI Player System
+**Priority: HIGH**
+
+#### 5.1 AI Player Architecture
+
+```javascript
+class AIPlayer {
+  constructor(playerId, difficulty = 'medium') {
+    this.playerId = playerId;
+    this.difficulty = difficulty;
+    this.strategy = this.getStrategy(difficulty);
+  }
+
+  getStrategy(difficulty) {
+    switch (difficulty) {
+      case 'easy':
+        return new RandomStrategy();
+      case 'medium':
+        return new GreedyStrategy();
+      case 'hard':
+        return new MinimaxStrategy();
+      default:
+        return new GreedyStrategy();
+    }
+  }
+
+  async takeTurn(state) {
+    // Add artificial delay to simulate thinking
+    const delay = this.difficulty === 'hard' ? 1500 :
+                  this.difficulty === 'medium' ? 1000 : 500;
+
+    await new Promise(resolve => setTimeout(resolve, delay));
+
+    const move = this.strategy.selectMove(state, this.playerId);
+    return move;
+  }
+}
+
+// Move structure
+class Move {
+  constructor(tileIndex, position, effects = []) {
+    this.tileIndex = tileIndex;  // Index in hand
+    this.position = position;     // {x, y}
+    this.effects = effects;       // Effect choices
+  }
+}
+```
+
+#### 5.2 AI Strategies
+
+```javascript
+// Easy AI: Random valid moves
+class RandomStrategy {
+  selectMove(state, playerId) {
+    const player = state.players[playerId];
+
+    // Pick random tile from hand
+    const tileIndex = Math.floor(Math.random() * player.hand.length);
+
+    // Pick random valid position
+    const validPositions = this.getValidPositions(state);
+    const position = validPositions[
+      Math.floor(Math.random() * validPositions.length)
+    ];
+
+    return new Move(tileIndex, position);
+  }
+
+  getValidPositions(state) {
+    const positions = [];
+    for (let y = 0; y < state.board.height; y++) {
+      for (let x = 0; x < state.board.width; x++) {
+        positions.push({ x, y });
+      }
+    }
+    return positions;
+  }
+}
+
+// Medium AI: Greedy strategy
+class GreedyStrategy {
+  selectMove(state, playerId) {
+    const player = state.players[playerId];
+    let bestMove = null;
+    let bestScore = -Infinity;
+
+    // Evaluate each tile in hand
+    for (let tileIndex = 0; tileIndex < player.hand.length; tileIndex++) {
+      const tile = player.hand[tileIndex];
+
+      // Evaluate each position
+      for (let y = 0; y < state.board.height; y++) {
+        for (let x = 0; x < state.board.width; x++) {
+          const position = { x, y };
+          const score = this.evaluateMove(state, tile, position, playerId);
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestMove = new Move(tileIndex, position);
+          }
+        }
+      }
+    }
+
+    return bestMove;
+  }
+
+  evaluateMove(state, tile, position, playerId) {
+    let score = 0;
+
+    // Prefer center positions
+    const centerX = Math.floor(state.board.width / 2);
+    const centerY = Math.floor(state.board.height / 2);
+    const distanceFromCenter = Math.abs(position.x - centerX) +
+                               Math.abs(position.y - centerY);
+    score += (state.board.width - distanceFromCenter) * 2;
+
+    // Prefer empty spaces
+    const space = state.board.getSpace(position.x, position.y);
+    if (space.stack.length === 0) {
+      score += 10;
+    }
+
+    // Avoid opponent-controlled spaces with permanent flags
+    if (space.controlledBy !== null &&
+        space.controlledBy !== playerId &&
+        space.flags.isPermanent) {
+      score -= 50;
+    }
+
+    // Prefer tiles that claim spaces
+    if (tile.type === 'claim') {
+      score += 15;
+    }
+
+    // Prefer destruction tiles near opponent stacks
+    if (tile.type === 'destroy') {
+      const nearbyOpponentTiles = this.countNearbyOpponentTiles(
+        state, position, playerId, 2
+      );
+      score += nearbyOpponentTiles * 10;
+    }
+
+    // Prefer planting in areas we control
+    if (tile.type === 'plant') {
+      if (space.controlledBy === playerId) {
+        score += 12;
+      }
+    }
+
+    return score;
+  }
+
+  countNearbyOpponentTiles(state, position, playerId, radius) {
+    let count = 0;
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const x = position.x + dx;
+        const y = position.y + dy;
+        const space = state.board.getSpace(x, y);
+        if (space && space.controlledBy !== null &&
+            space.controlledBy !== playerId) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+}
+
+// Hard AI: Minimax with alpha-beta pruning (simplified)
+class MinimaxStrategy {
+  selectMove(state, playerId) {
+    const depth = 2; // Look ahead 2 moves
+    const result = this.minimax(state, depth, -Infinity, Infinity, true, playerId);
+    return result.move;
+  }
+
+  minimax(state, depth, alpha, beta, maximizingPlayer, playerId) {
+    if (depth === 0) {
+      return {
+        score: this.evaluateState(state, playerId),
+        move: null
+      };
+    }
+
+    const player = state.players[state.currentPlayerIndex];
+    const moves = this.generateMoves(state, player);
+
+    if (maximizingPlayer) {
+      let maxEval = -Infinity;
+      let bestMove = moves[0];
+
+      for (const move of moves) {
+        const newState = this.simulateMove(state, move);
+        const evaluation = this.minimax(
+          newState, depth - 1, alpha, beta, false, playerId
+        );
+
+        if (evaluation.score > maxEval) {
+          maxEval = evaluation.score;
+          bestMove = move;
+        }
+
+        alpha = Math.max(alpha, evaluation.score);
+        if (beta <= alpha) break; // Alpha-beta pruning
+      }
+
+      return { score: maxEval, move: bestMove };
+    } else {
+      let minEval = Infinity;
+      let bestMove = moves[0];
+
+      for (const move of moves) {
+        const newState = this.simulateMove(state, move);
+        const evaluation = this.minimax(
+          newState, depth - 1, alpha, beta, true, playerId
+        );
+
+        if (evaluation.score < minEval) {
+          minEval = evaluation.score;
+          bestMove = move;
+        }
+
+        beta = Math.min(beta, evaluation.score);
+        if (beta <= alpha) break;
+      }
+
+      return { score: minEval, move: bestMove };
+    }
+  }
+
+  evaluateState(state, playerId) {
+    // Comprehensive state evaluation
+    let score = 0;
+
+    // Score based on controlled spaces
+    score += state.players[playerId].score * 10;
+    score += state.players[playerId].controlledSpaces * 5;
+
+    // Penalize opponent score
+    state.players.forEach((player, id) => {
+      if (id !== playerId) {
+        score -= player.score * 8;
+        score -= player.controlledSpaces * 4;
+      }
+    });
+
+    // Bonus for having more tiles in hand
+    score += state.players[playerId].hand.length * 2;
+
+    return score;
+  }
+
+  generateMoves(state, player) {
+    const moves = [];
+
+    // Sample a subset of possible moves (too many to evaluate all)
+    const sampleSize = 10;
+
+    for (let i = 0; i < Math.min(player.hand.length, 3); i++) {
+      const positions = this.samplePositions(state, sampleSize);
+      positions.forEach(pos => {
+        moves.push(new Move(i, pos));
+      });
+    }
+
+    return moves;
+  }
+
+  samplePositions(state, count) {
+    const positions = [];
+    const step = Math.max(1, Math.floor(state.board.width / Math.sqrt(count)));
+
+    for (let y = 0; y < state.board.height; y += step) {
+      for (let x = 0; x < state.board.width; x += step) {
+        positions.push({ x, y });
+      }
+    }
+
+    return positions.slice(0, count);
+  }
+
+  simulateMove(state, move) {
+    // Create a deep copy of state and simulate the move
+    const newState = JSON.parse(JSON.stringify(state));
+
+    // Simplified simulation - just place the tile
+    // In real implementation, would execute full turn logic
+    const space = newState.board.spaces[move.position.y][move.position.x];
+    const tile = newState.players[newState.currentPlayerIndex].hand[move.tileIndex];
+
+    if (space && tile) {
+      space.stack.push(tile);
+      space.controlledBy = newState.currentPlayerIndex;
+    }
+
+    return newState;
+  }
+}
+```
+
+#### 5.3 Integrating AI into Game
+
+```javascript
+class GameApp extends HTMLElement {
+  // ... existing code ...
+
+  async handleCellSelected(x, y) {
+    if (this.selectedTileIndex !== null &&
+        this.state.phase === GamePhase.PLACEMENT) {
+      try {
+        // Human player move
+        this.state = TurnManager.placeTile(
+          this.state, this.selectedTileIndex, { x, y }
+        );
+        this.selectedTileIndex = null;
+
+        this.state = TurnManager.drawTile(this.state);
+        this.state = TurnManager.endTurn(this.state);
+        this.updateUI();
+
+        // Check if next player is AI
+        if (this.isAIPlayer(this.state.currentPlayerIndex)) {
+          await this.executeAITurn();
+        }
+      } catch (error) {
+        console.error('Invalid placement:', error);
+      }
+    }
+  }
+
+  isAIPlayer(playerIndex) {
+    return this.config.gameMode === 'ai' && playerIndex === 1;
+  }
+
+  async executeAITurn() {
+    // Disable UI during AI turn
+    this.setUIEnabled(false);
+
+    const ai = new AIPlayer(
+      this.state.currentPlayerIndex,
+      this.config.difficulty
+    );
+
+    const move = await ai.takeTurn(this.state);
+
+    // Execute AI's move
+    this.state = TurnManager.placeTile(
+      this.state, move.tileIndex, move.position
+    );
+    this.state = TurnManager.drawTile(this.state);
+    this.state = TurnManager.endTurn(this.state);
+
+    this.updateUI();
+    this.setUIEnabled(true);
+  }
+
+  setUIEnabled(enabled) {
+    const board = this.shadowRoot.getElementById('board');
+    const hand = this.shadowRoot.getElementById('hand');
+
+    if (enabled) {
+      board.style.pointerEvents = 'auto';
+      hand.style.pointerEvents = 'auto';
+    } else {
+      board.style.pointerEvents = 'none';
+      hand.style.pointerEvents = 'none';
+    }
+  }
+}
+```
+
+---
+
+### Phase 6: Network Architecture (WebSocket-Ready)
+**Priority: MEDIUM (Future)**
+
+#### 6.1 Network Manager
+
+```javascript
+class NetworkManager {
+  constructor() {
+    this.socket = null;
+    this.roomId = null;
+    this.playerId = null;
+    this.isHost = false;
+    this.listeners = new Map();
+  }
+
+  // Connect to WebSocket server
+  connect(serverUrl) {
+    return new Promise((resolve, reject) => {
+      this.socket = new WebSocket(serverUrl);
+
+      this.socket.onopen = () => {
+        console.log('Connected to game server');
+        resolve();
+      };
+
+      this.socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        reject(error);
+      };
+
+      this.socket.onmessage = (event) => {
+        this.handleMessage(JSON.parse(event.data));
+      };
+
+      this.socket.onclose = () => {
+        console.log('Disconnected from server');
+        this.emit('disconnect');
+      };
+    });
+  }
+
+  // Create a new game room
+  createRoom(config) {
+    this.send({
+      type: 'CREATE_ROOM',
+      config: config
+    });
+  }
+
+  // Join an existing room
+  joinRoom(roomId) {
+    this.send({
+      type: 'JOIN_ROOM',
+      roomId: roomId
+    });
+  }
+
+  // Send game action to server
+  sendAction(action) {
+    this.send({
+      type: 'GAME_ACTION',
+      roomId: this.roomId,
+      action: action
+    });
+  }
+
+  // Send state update (for host-authoritative model)
+  sendState(state) {
+    this.send({
+      type: 'STATE_UPDATE',
+      roomId: this.roomId,
+      state: this.serializeState(state)
+    });
+  }
+
+  // Handle incoming messages
+  handleMessage(message) {
+    switch (message.type) {
+      case 'ROOM_CREATED':
+        this.roomId = message.roomId;
+        this.playerId = message.playerId;
+        this.isHost = true;
+        this.emit('room-created', message);
+        break;
+
+      case 'ROOM_JOINED':
+        this.roomId = message.roomId;
+        this.playerId = message.playerId;
+        this.emit('room-joined', message);
+        break;
+
+      case 'PLAYER_JOINED':
+        this.emit('player-joined', message.player);
+        break;
+
+      case 'GAME_START':
+        this.emit('game-start', message.state);
+        break;
+
+      case 'GAME_ACTION':
+        this.emit('opponent-action', message.action);
+        break;
+
+      case 'STATE_UPDATE':
+        this.emit('state-update', this.deserializeState(message.state));
+        break;
+
+      case 'ERROR':
+        this.emit('error', message.error);
+        break;
+    }
+  }
+
+  // Serialize game state for network transmission
+  serializeState(state) {
+    return {
+      board: state.board,
+      players: state.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        hand: p.hand, // Don't send opponent's hand
+        score: p.score,
+        controlledSpaces: p.controlledSpaces,
+        statistics: p.statistics
+      })),
+      currentPlayerIndex: state.currentPlayerIndex,
+      turnNumber: state.turnNumber,
+      roundNumber: state.roundNumber,
+      phase: state.phase
+    };
+  }
+
+  deserializeState(serialized) {
+    // Reconstruct GameState object from serialized data
+    const state = new GameState(new GameConfig());
+    Object.assign(state, serialized);
+    return state;
+  }
+
+  // Event system
+  on(event, callback) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
+    }
+    this.listeners.get(event).push(callback);
+  }
+
+  emit(event, data) {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event).forEach(callback => callback(data));
+    }
+  }
+
+  send(data) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(data));
+    }
+  }
+
+  disconnect() {
+    if (this.socket) {
+      this.socket.close();
+    }
+  }
+}
+```
+
+#### 6.2 Online Game Flow
+
+```javascript
+class OnlineGameManager {
+  constructor() {
+    this.network = new NetworkManager();
+    this.state = null;
+  }
+
+  async createGame(config) {
+    await this.network.connect('wss://your-server.com/game');
+    this.network.createRoom(config);
+
+    this.network.on('room-created', (data) => {
+      console.log('Room created:', data.roomId);
+      this.displayRoomCode(data.roomId);
+    });
+
+    this.network.on('player-joined', (player) => {
+      console.log('Player joined:', player.name);
+      this.startGame();
+    });
+
+    this.setupNetworkHandlers();
+  }
+
+  async joinGame(roomId) {
+    await this.network.connect('wss://your-server.com/game');
+    this.network.joinRoom(roomId);
+
+    this.network.on('room-joined', (data) => {
+      console.log('Joined room:', roomId);
+    });
+
+    this.network.on('game-start', (state) => {
+      this.state = state;
+      this.updateUI();
+    });
+
+    this.setupNetworkHandlers();
+  }
+
+  setupNetworkHandlers() {
+    // Handle opponent actions
+    this.network.on('opponent-action', (action) => {
+      this.executeAction(action);
+    });
+
+    // Handle state updates (if using server-authoritative model)
+    this.network.on('state-update', (state) => {
+      this.state = state;
+      this.updateUI();
+    });
+
+    // Handle disconnections
+    this.network.on('disconnect', () => {
+      this.showDisconnectMessage();
+    });
+  }
+
+  // Player makes a move
+  makeMove(tileIndex, position) {
+    const action = {
+      type: 'PLACE_TILE',
+      tileIndex: tileIndex,
+      position: position,
+      playerId: this.network.playerId
+    };
+
+    // Optimistic update (update local state immediately)
+    this.state = TurnManager.placeTile(this.state, tileIndex, position);
+    this.updateUI();
+
+    // Send to server
+    this.network.sendAction(action);
+  }
+
+  executeAction(action) {
+    // Execute opponent's action
+    switch (action.type) {
+      case 'PLACE_TILE':
+        this.state = TurnManager.placeTile(
+          this.state,
+          action.tileIndex,
+          action.position
+        );
+        this.updateUI();
+        break;
+    }
+  }
+}
+```
+
+#### 6.3 Server Architecture (Node.js Example)
+
+```javascript
+// server.js - Basic WebSocket game server
+const WebSocket = require('ws');
+const wss = new WebSocket.Server({ port: 8080 });
+
+const rooms = new Map(); // roomId -> Room
+
+class Room {
+  constructor(id, config) {
+    this.id = id;
+    this.config = config;
+    this.players = [];
+    this.state = null;
+    this.maxPlayers = config.playerCount;
+  }
+
+  addPlayer(client, name) {
+    const player = {
+      id: this.players.length,
+      client: client,
+      name: name
+    };
+    this.players.push(player);
+    return player;
+  }
+
+  isFull() {
+    return this.players.length >= this.maxPlayers;
+  }
+
+  broadcast(message, excludeClient = null) {
+    this.players.forEach(player => {
+      if (player.client !== excludeClient &&
+          player.client.readyState === WebSocket.OPEN) {
+        player.client.send(JSON.stringify(message));
+      }
+    });
+  }
+
+  startGame() {
+    // Initialize game state
+    const engine = new GameEngine();
+    this.state = engine.initializeGame(
+      this.config,
+      this.players.map(p => p.name)
+    );
+
+    // Notify all players
+    this.broadcast({
+      type: 'GAME_START',
+      state: this.state
+    });
+  }
+}
+
+wss.on('connection', (ws) => {
+  console.log('Client connected');
+
+  ws.on('message', (data) => {
+    const message = JSON.parse(data);
+    handleMessage(ws, message);
+  });
+
+  ws.on('close', () => {
+    console.log('Client disconnected');
+    handleDisconnect(ws);
+  });
+});
+
+function handleMessage(client, message) {
+  switch (message.type) {
+    case 'CREATE_ROOM':
+      const roomId = generateRoomId();
+      const room = new Room(roomId, message.config);
+      rooms.set(roomId, room);
+
+      const host = room.addPlayer(client, 'Host');
+      client.roomId = roomId;
+
+      client.send(JSON.stringify({
+        type: 'ROOM_CREATED',
+        roomId: roomId,
+        playerId: host.id
+      }));
+      break;
+
+    case 'JOIN_ROOM':
+      const existingRoom = rooms.get(message.roomId);
+      if (!existingRoom) {
+        client.send(JSON.stringify({
+          type: 'ERROR',
+          error: 'Room not found'
+        }));
+        return;
+      }
+
+      if (existingRoom.isFull()) {
+        client.send(JSON.stringify({
+          type: 'ERROR',
+          error: 'Room is full'
+        }));
+        return;
+      }
+
+      const player = existingRoom.addPlayer(client, 'Player ' + existingRoom.players.length);
+      client.roomId = message.roomId;
+
+      client.send(JSON.stringify({
+        type: 'ROOM_JOINED',
+        roomId: message.roomId,
+        playerId: player.id
+      }));
+
+      existingRoom.broadcast({
+        type: 'PLAYER_JOINED',
+        player: { id: player.id, name: player.name }
+      }, client);
+
+      // Start game if room is full
+      if (existingRoom.isFull()) {
+        existingRoom.startGame();
+      }
+      break;
+
+    case 'GAME_ACTION':
+      const gameRoom = rooms.get(message.roomId);
+      if (gameRoom) {
+        // Broadcast action to all other players
+        gameRoom.broadcast({
+          type: 'GAME_ACTION',
+          action: message.action
+        }, client);
+      }
+      break;
+  }
+}
+
+function handleDisconnect(client) {
+  if (client.roomId) {
+    const room = rooms.get(client.roomId);
+    if (room) {
+      room.broadcast({
+        type: 'PLAYER_DISCONNECTED'
+      }, client);
+    }
+  }
+}
+
+function generateRoomId() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+console.log('Game server running on ws://localhost:8080');
+```
+
+---
+
+### Phase 7: Project Structure
 
 ```
 emojinal/
@@ -1341,9 +2447,18 @@ emojinal/
 │   │   ├── effects.js            # EffectEngine
 │   │   ├── scoring.js            # ScoringEngine
 │   │   ├── turn-manager.js       # TurnManager
-│   │   └── ai.js                 # AI player (future)
+│   │   └── plant-evolution.js    # PlantEvolutionSystem
+│   ├── ai/
+│   │   ├── ai-player.js          # AIPlayer class
+│   │   ├── random-strategy.js    # Easy AI
+│   │   ├── greedy-strategy.js    # Medium AI
+│   │   └── minimax-strategy.js   # Hard AI
+│   ├── network/
+│   │   ├── network-manager.js    # WebSocket client
+│   │   └── online-game.js        # Online game manager
 │   ├── components/
 │   │   ├── game-app.js           # Main game component
+│   │   ├── game-setup.js         # Setup/config screen
 │   │   ├── game-board.js         # Board component
 │   │   ├── player-hand.js        # Hand component
 │   │   ├── score-panel.js        # Score component
@@ -1352,6 +2467,10 @@ emojinal/
 │   └── utils/
 │       ├── config.js             # Configuration
 │       └── tile-data.js          # Tile definitions loader
+├── server/
+│   ├── server.js                 # WebSocket game server
+│   ├── room.js                   # Room management
+│   └── package.json              # Server dependencies
 ├── data/
 │   ├── tiles.json                # Tile definitions
 │   └── config.json               # Game configuration
@@ -1359,18 +2478,21 @@ emojinal/
 │   └── sounds/                   # Sound effects (future)
 ├── tests/
 │   ├── game.test.js              # Game logic tests
+│   ├── ai.test.js                # AI strategy tests
 │   └── components.test.js        # Component tests
 ├── Emojis                        # Original emoji definitions
-├── GAME_ENGINE_PLAN_WEB.md       # This document
-└── package.json                  # NPM dependencies (if any)
+├── GAME_ENGINE_PLAN.md           # This document
+├── README.md                     # Project documentation
+└── package.json                  # Client dependencies
 ```
 
 ---
 
-### Phase 6: Implementation Roadmap
+### Phase 8: Implementation Roadmap
 
 #### Milestone 1: Core Engine (Week 1-2)
 - ✅ Implement all data structures (Tile, GridSpace, GameBoard, Player, GameState)
+- ✅ Implement GameConfig with customizable options
 - ✅ Implement GameEngine initialization
 - ✅ Implement basic TurnManager
 - ✅ Implement simple effects (claim, basic movement)
@@ -1378,48 +2500,80 @@ emojinal/
 
 **Deliverable**: Console-based game that can initialize and process basic turns
 
-#### Milestone 2: Web Components (Week 3)
-- ✅ Create all Web Components (game-app, game-board, player-hand, score-panel, game-status)
+#### Milestone 2: Web Components & Setup UI (Week 3)
+- ✅ Create game-setup component with customizable settings
+- ✅ Create all game Web Components (game-app, game-board, player-hand, score-panel, game-status)
 - ✅ Implement event-driven architecture
 - ✅ Add CSS styling and animations
 - ✅ Test component interactions
+- ✅ Add board size and turn count sliders
 
-**Deliverable**: Playable 2-player game with basic tiles in browser
+**Deliverable**: Playable 2-player game with customizable settings in browser
 
 #### Milestone 3: Complete Effect System (Week 4-5)
 - ✅ Implement all movement effects
 - ✅ Implement stack manipulation
 - ✅ Implement destruction effects
-- ✅ Implement plant evolution
+- ✅ Implement plant evolution system
 - ✅ Implement biohazard system
+- ✅ Implement resource system (rocks, pickaxe, moai)
+- ✅ Implement all special tiles
 
 **Deliverable**: All 44 tiles fully functional
 
-#### Milestone 4: Polish & UX (Week 6)
+#### Milestone 4: AI Opponent (Week 6)
+- ✅ Implement RandomStrategy (Easy AI)
+- ✅ Implement GreedyStrategy (Medium AI)
+- ✅ Implement MinimaxStrategy (Hard AI)
+- ✅ Integrate AI into game flow
+- ✅ Add AI difficulty selector
+- ✅ Add "thinking" animation/delay for AI
+- ✅ Test AI balance and difficulty levels
+
+**Deliverable**: Fully functional AI opponent with 3 difficulty levels
+
+#### Milestone 5: Polish & UX (Week 7)
 - ✅ Add animations for tile placement and effects
 - ✅ Improve visual feedback
 - ✅ Add sound effects (optional)
 - ✅ Implement effect selection UI
-- ✅ Add game over screen
+- ✅ Add game over screen with winner display
 - ✅ Mobile responsiveness
+- ✅ Add tutorial/help screen
 
 **Deliverable**: Polished, enjoyable game experience
 
-#### Milestone 5: AI & Testing (Week 7)
-- ✅ Implement basic AI opponent
-- ✅ Write comprehensive tests
-- ✅ Balance gameplay
+#### Milestone 6: Testing & Balance (Week 8)
+- ✅ Write comprehensive unit tests for game logic
+- ✅ Write tests for AI strategies
+- ✅ Integration tests for full game flow
+- ✅ Balance gameplay (tile distribution, scoring)
+- ✅ Test with different board sizes and turn counts
+- ✅ Performance optimization
 - ✅ Bug fixes
 
-**Deliverable**: Complete game with AI
+**Deliverable**: Stable, balanced game
 
-#### Milestone 6: Deployment (Week 8)
-- ✅ Optimize performance
-- ✅ Add PWA support (optional)
-- ✅ Deploy to hosting (Netlify, Vercel, GitHub Pages)
-- ✅ Documentation
+#### Milestone 7: Deployment (Week 9)
+- ✅ Optimize performance and bundle size
+- ✅ Add PWA support (offline play)
+- ✅ Deploy client to hosting (Netlify, Vercel, GitHub Pages)
+- ✅ Create comprehensive README
+- ✅ Write gameplay guide
 
-**Deliverable**: Deployed, playable game
+**Deliverable**: Deployed, playable game accessible online
+
+#### Milestone 8: Multiplayer Foundation (Week 10+) - FUTURE
+- ✅ Implement NetworkManager with WebSocket support
+- ✅ Implement OnlineGameManager
+- ✅ Create room creation/joining UI
+- ✅ Add lobby system
+- ✅ Implement basic Node.js game server
+- ✅ Test peer-to-peer gameplay
+- ✅ Add reconnection handling
+- ✅ Deploy server infrastructure
+
+**Deliverable**: Online multiplayer PvP functionality
 
 ---
 
