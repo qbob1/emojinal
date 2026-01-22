@@ -35,4 +35,10 @@ Intermediate plants can evolve into:
 🧨 - destroy all stack in 3 tile radius claim 4 tiles from radius
 🌪️ - design a path for destruction, must end on edge of board
 ☢️ - all user poops become germs/ activate germ effect 
-🚽 - destroy row or colum
+🚽  - destroy row or column of tiles leave behind poop in whichever
+💩 - user claims space 
+🪰 - for each poop/contagion allow user to place an additional poop/contagion, 
+🦠 - when placed allows user to spread 1 additional germ for each
+💊 - cure all user germs claim as flags
+☣️ - destroy all stacks, claim 4 flags 
+🎲 - random tile at selected spot 
