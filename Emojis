@@ -1,11 +1,38 @@
-🚩
-➖
-♾️
-🧟☠️
-↔️↕️➡️⬅️⬆️⬇️↖️↙️↘️↗️
-⏫️⏬️⏹️🔄🔃
-🌱🌿🍀☘️🌸🐝🌵🌴🌳🪓🍄
-🪨⛏️🗿
-💣🔫🧨🌪️☢️🚽
-🪰🦠💊☣️
-🎲
+🚩 - user claims space 
+➖ - negates a claimed space sets a flag for user that placed it 
+♾️- user maintains space for entire game
+🧟- at the end of the round crawls back to the top of the space. 
+☠️ - user claims space all existing zombies in space are negated
+↔️ - user moves current stack to left or right (chosen)
+↕️ - user moves deck up or down (chosen)
+➡️ - user moves deck x spaces right
+⬅️ - user moves stack x spaces left
+⬆️ - user moves stacks x spaces up
+⬇️ - user moves stack x spaces down
+↖️ - user moves stack spaces diag left
+↙️ - user moves stack x spaces diag left
+↘️ - user moves stack x spaces diag right
+↗️ - user moves stack x spaces diag up right 
+⏫️ - bring bottom card to top of stack
+⏬️ - move top tile to bottom of stack
+⏹️ - stops all effects in stack 
+🔄 - reshuffle stack
+🌱 - continues to grow through stack. After 1 turn on top evolves into:
+🌿 - intermediate no immediate effects continues to grow
+🍀 - allows user to draw an extra tiles continues to grow
+Intermediate plants can evolve into:
+🌸 - has effect with bee
+🐝 - allow user to plant new seedling for each flower
+🌵 - only destroyed by nuke, or bombs
+🌳 - allows user to place one more seedling whe reached
+🪓 - chips down plants. When chopping a non tree reclaims space, when it’s a tree leaves a stump 🪵
+🍄 - when played as is allows user to spread an additional mushroom at the end of a round, when applied to stump (user can chop own tree) all user plants become a mushroom. (Allowing additional mushroom for each plant)
+🪨 - user claims space only destroyed by pickaxe bomb nuke
+⛏️ - destroy other user stone, or convert own stone into 🗿
+🗿 - cannot be destroyed 
+💣  - destroy all stacks in 1 tile radius place flag on spot 
+🔫 - destroy 1 tile stack
+🧨 - destroy all stack in 3 tile radius claim 4 tiles from radius
+🌪️ - design a path for destruction, must end on edge of board
+☢️ - all user poops become germs/ activate germ effect 
+🚽 - destroy row or colum
