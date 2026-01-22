@@ -100,6 +100,45 @@ class ScorePanel extends HTMLElement {
           color: #4a9eff;
           font-weight: bold;
         }
+
+        @media (max-width: 768px) {
+          .score-panel {
+            padding: 1rem;
+          }
+
+          h3 {
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+          }
+
+          .player-score {
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+          }
+
+          .score-emoji {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+          }
+
+          .player-name {
+            font-size: 1rem;
+          }
+
+          .player-score-value {
+            font-size: 1.5rem;
+          }
+
+          .player-stats {
+            font-size: 0.75rem;
+          }
+
+          .turn-info {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            font-size: 0.85rem;
+          }
+        }
       </style>
       <div class="score-panel">
         <h3>🏆 Scoreboard</h3>

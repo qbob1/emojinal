@@ -29,6 +29,7 @@ class GameBoard extends HTMLElement {
           background: rgba(0, 0, 0, 0.3);
           border-radius: 12px;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+          overflow: auto;
         }
 
         .board-grid {
@@ -38,8 +39,9 @@ class GameBoard extends HTMLElement {
           background: #0f3460;
           padding: 8px;
           border-radius: 8px;
-          max-width: min(600px, 90vw);
-          max-height: min(600px, 60vh);
+          width: min(600px, 90vw);
+          height: min(600px, 90vw);
+          max-width: 100%;
         }
 
         .grid-cell {
@@ -48,13 +50,15 @@ class GameBoard extends HTMLElement {
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: clamp(1rem, 3vw, 2.5rem);
+          font-size: clamp(0.8rem, calc(90vw / ${gridSize} / 2), 2.5rem);
           cursor: pointer;
           position: relative;
           border-radius: 4px;
           border: 2px solid transparent;
           transition: all 0.2s ease;
           user-select: none;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
         }
 
         .grid-cell:hover {
@@ -62,6 +66,32 @@ class GameBoard extends HTMLElement {
           transform: scale(1.05);
           border-color: #4a9eff;
           box-shadow: 0 0 15px rgba(74, 158, 255, 0.5);
+        }
+
+        .grid-cell:active {
+          transform: scale(0.95);
+        }
+
+        @media (max-width: 768px) {
+          .board-container {
+            padding: 0.5rem;
+          }
+
+          .board-grid {
+            width: 95vw;
+            height: 95vw;
+            gap: 2px;
+            padding: 4px;
+          }
+
+          .grid-cell {
+            border-width: 1px;
+            border-radius: 2px;
+          }
+
+          .grid-cell:hover {
+            transform: none;
+          }
         }
 
         .grid-cell[data-controlled-by="0"] {
@@ -85,6 +115,19 @@ class GameBoard extends HTMLElement {
           border: 1px solid rgba(255, 255, 255, 0.2);
           font-weight: bold;
           color: #4a9eff;
+          line-height: 1;
+          min-width: 12px;
+          text-align: center;
+        }
+
+        @media (max-width: 768px) {
+          .stack-indicator {
+            font-size: 0.4em;
+            padding: 0px 2px;
+            top: 1px;
+            right: 1px;
+            min-width: 10px;
+          }
         }
 
         @keyframes tile-placed {

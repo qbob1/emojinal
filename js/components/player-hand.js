@@ -31,6 +31,7 @@ class PlayerHand extends HTMLElement {
           border-radius: 12px;
           overflow-x: auto;
           box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+          -webkit-overflow-scrolling: touch;
         }
 
         .tile-card {
@@ -44,12 +45,18 @@ class PlayerHand extends HTMLElement {
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           text-align: center;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
         }
 
         .tile-card:hover {
           transform: translateY(-10px) scale(1.05);
           border-color: #5a8abf;
           box-shadow: 0 10px 30px rgba(74, 158, 255, 0.4);
+        }
+
+        .tile-card:active {
+          transform: translateY(-5px) scale(1.02);
         }
 
         .tile-card.selected {
@@ -73,6 +80,39 @@ class PlayerHand extends HTMLElement {
           padding: 2px 8px;
           border-radius: 8px;
           display: inline-block;
+        }
+
+        @media (max-width: 768px) {
+          .hand-container {
+            padding: 0.75rem;
+            gap: 0.5rem;
+          }
+
+          .tile-card {
+            min-width: 60px;
+            max-width: 80px;
+            padding: 0.5rem;
+            border-width: 2px;
+          }
+
+          .tile-card:hover {
+            transform: none;
+          }
+
+          .tile-card.selected {
+            transform: scale(1.05);
+            border-width: 3px;
+          }
+
+          .tile-emoji {
+            font-size: 2rem;
+            margin-bottom: 0.25rem;
+          }
+
+          .tile-shortcut {
+            font-size: 0.6rem;
+            padding: 1px 4px;
+          }
         }
       </style>
       <div class="hand-container">

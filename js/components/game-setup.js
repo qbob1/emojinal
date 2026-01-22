@@ -148,6 +148,57 @@ class GameSetup extends HTMLElement {
         .start-button:active {
           transform: translateY(0);
         }
+
+        @media (max-width: 768px) {
+          .setup-container {
+            margin: 1rem;
+            padding: 1.5rem;
+          }
+
+          h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .form-group {
+            margin-bottom: 1.25rem;
+          }
+
+          label {
+            font-size: 0.9rem;
+          }
+
+          .range-value {
+            font-size: 1rem;
+            margin-left: 0.5rem;
+          }
+
+          .mode-selector {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+          }
+
+          .mode-button {
+            padding: 0.75rem;
+          }
+
+          .start-button {
+            padding: 1.25rem;
+            font-size: 1.1rem;
+            margin-top: 1.5rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .setup-container {
+            margin: 0.5rem;
+            padding: 1rem;
+          }
+
+          h2 {
+            font-size: 1.3rem;
+          }
+        }
       </style>
       <div class="setup-container">
         <h2>🎮 Game Setup</h2>

@@ -45,7 +45,9 @@ class GameApp extends HTMLElement {
                 "hand"
                 "sidebar";
               grid-template-columns: 1fr;
-              grid-template-rows: auto 1fr auto auto;
+              grid-template-rows: auto minmax(0, 1fr) auto auto;
+              gap: 0.5rem;
+              padding: 0.5rem;
             }
           }
         </style>

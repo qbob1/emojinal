@@ -71,7 +71,26 @@ class GameStatus extends HTMLElement {
         @media (max-width: 768px) {
           .status-bar {
             flex-direction: column;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+          }
+
+          .game-title {
+            font-size: 1.3rem;
+          }
+
+          .status-info {
             gap: 1rem;
+            width: 100%;
+            justify-content: space-around;
+          }
+
+          .status-label {
+            font-size: 0.65rem;
+          }
+
+          .status-value {
+            font-size: 0.9rem;
           }
         }
       </style>
