@@ -542,6 +542,28 @@ export class EffectEngine {
     return state;
   }
 
+  static plantGrowUpward(state, position) {
+    const space = state.board.getSpace(position.x, position.y);
+    if (!space || space.stack.length < 2) return state;
+
+    // Move each plant tile up one position (iterate from top to bottom to avoid double-moving)
+    for (let i = space.stack.length - 2; i >= 0; i--) {
+      const tile = space.stack[i];
+      if (tile.type === 'plant' && !tile.metadata.isNegated) {
+        // Swap with tile above
+        [space.stack[i], space.stack[i + 1]] = [space.stack[i + 1], space.stack[i]];
+      }
+    }
+
+    // Update control based on new top tile
+    const topTile = space.getTopTile();
+    if (topTile) {
+      space.controlledBy = topTile.owner;
+    }
+
+    return state;
+  }
+
   static randomTile(state, position, playerId) {
     // Place a random tile from deck
     if (state.deck.length > 0) {

@@ -106,6 +106,18 @@ export class TurnManager {
       });
     });
 
+    // Grow plants upward - they move up one position in the stack
+    state.board.spaces.forEach(row => {
+      row.forEach(space => {
+        if (space.stack.length > 1) {
+          const hasPlant = space.stack.some(tile => tile.type === 'plant');
+          if (hasPlant) {
+            state = EffectEngine.plantGrowUpward(state, space.position);
+          }
+        }
+      });
+    });
+
     // Evolve plants that are on top of stacks
     state.board.spaces.forEach(row => {
       row.forEach(space => {
