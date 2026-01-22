@@ -64,13 +64,13 @@ class GameApp extends HTMLElement {
     });
   }
 
-  initializeGame(config) {
+  async initializeGame(config) {
     const gameConfig = new GameConfig(config);
     const playerNames = config.gameMode === 'ai'
       ? ['You', 'Computer']
       : ['Player 1', 'Player 2'];
 
-    this.state = GameEngine.initializeGame(gameConfig, playerNames);
+    this.state = await GameEngine.initializeGame(gameConfig, playerNames);
     this.showSetup = false;
     this.render();
 

@@ -1,0 +1,399 @@
+{
+  "tiles": [
+    {
+      "emoji": "🚩",
+      "name": "Flag",
+      "type": "claim",
+      "description": "Claim this space",
+      "rarity": "common",
+      "count": 10,
+      "effects": ["claim_space"]
+    },
+    {
+      "emoji": "➖",
+      "name": "Negate",
+      "type": "special",
+      "description": "Negates a claimed space, sets a flag for user",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["negate_space"]
+    },
+    {
+      "emoji": "♾️",
+      "name": "Infinity",
+      "type": "claim",
+      "description": "Permanently control this space for entire game",
+      "rarity": "rare",
+      "count": 2,
+      "effects": ["permanent_claim"]
+    },
+    {
+      "emoji": "🧟",
+      "name": "Zombie",
+      "type": "special",
+      "description": "At end of round, crawls back to top of stack",
+      "rarity": "uncommon",
+      "count": 6,
+      "effects": ["zombie_crawl"]
+    },
+    {
+      "emoji": "☠️",
+      "name": "Skull",
+      "type": "claim",
+      "description": "Claim space and negate all zombies here",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["claim_space", "negate_zombies"]
+    },
+    {
+      "emoji": "↔️",
+      "name": "Move Horizontal",
+      "type": "movement",
+      "description": "Move stack left or right (choose)",
+      "rarity": "uncommon",
+      "count": 6,
+      "effects": ["move_choose_horizontal"]
+    },
+    {
+      "emoji": "↕️",
+      "name": "Move Vertical",
+      "type": "movement",
+      "description": "Move stack up or down (choose)",
+      "rarity": "uncommon",
+      "count": 6,
+      "effects": ["move_choose_vertical"]
+    },
+    {
+      "emoji": "➡️",
+      "name": "Move Right",
+      "type": "movement",
+      "description": "Move stack X spaces right",
+      "rarity": "common",
+      "count": 8,
+      "effects": ["move_right"]
+    },
+    {
+      "emoji": "⬅️",
+      "name": "Move Left",
+      "type": "movement",
+      "description": "Move stack X spaces left",
+      "rarity": "common",
+      "count": 8,
+      "effects": ["move_left"]
+    },
+    {
+      "emoji": "⬆️",
+      "name": "Move Up",
+      "type": "movement",
+      "description": "Move stack X spaces up",
+      "rarity": "common",
+      "count": 8,
+      "effects": ["move_up"]
+    },
+    {
+      "emoji": "⬇️",
+      "name": "Move Down",
+      "type": "movement",
+      "description": "Move stack X spaces down",
+      "rarity": "common",
+      "count": 8,
+      "effects": ["move_down"]
+    },
+    {
+      "emoji": "↖️",
+      "name": "Move Diagonal Up-Left",
+      "type": "movement",
+      "description": "Move stack X spaces diagonally up-left",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["move_diagonal_ul"]
+    },
+    {
+      "emoji": "↙️",
+      "name": "Move Diagonal Down-Left",
+      "type": "movement",
+      "description": "Move stack X spaces diagonally down-left",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["move_diagonal_dl"]
+    },
+    {
+      "emoji": "↘️",
+      "name": "Move Diagonal Down-Right",
+      "type": "movement",
+      "description": "Move stack X spaces diagonally down-right",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["move_diagonal_dr"]
+    },
+    {
+      "emoji": "↗️",
+      "name": "Move Diagonal Up-Right",
+      "type": "movement",
+      "description": "Move stack X spaces diagonally up-right",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["move_diagonal_ur"]
+    },
+    {
+      "emoji": "⏫",
+      "name": "Bottom to Top",
+      "type": "stack",
+      "description": "Bring bottom tile to top of stack",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["bottom_to_top"]
+    },
+    {
+      "emoji": "⏬",
+      "name": "Top to Bottom",
+      "type": "stack",
+      "description": "Move top tile to bottom of stack",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["top_to_bottom"]
+    },
+    {
+      "emoji": "⏹️",
+      "name": "Stop",
+      "type": "stack",
+      "description": "Stops all effects in this stack",
+      "rarity": "rare",
+      "count": 2,
+      "effects": ["stop_effects"]
+    },
+    {
+      "emoji": "🔄",
+      "name": "Shuffle",
+      "type": "stack",
+      "description": "Reshuffle this stack randomly",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["shuffle_stack"]
+    },
+    {
+      "emoji": "🌱",
+      "name": "Seedling",
+      "type": "plant",
+      "description": "Grows through stack. After 1 turn evolves to 🌿",
+      "rarity": "common",
+      "count": 10,
+      "effects": ["plant_evolve"],
+      "evolution": {
+        "turns": 1,
+        "next": "🌿"
+      }
+    },
+    {
+      "emoji": "🌿",
+      "name": "Herb",
+      "type": "plant",
+      "description": "Intermediate plant, continues to grow",
+      "rarity": "common",
+      "count": 0,
+      "effects": ["plant_evolve"],
+      "evolution": {
+        "turns": 1,
+        "options": ["🍀", "🌸", "🌵", "🌳"]
+      }
+    },
+    {
+      "emoji": "🍀",
+      "name": "Clover",
+      "type": "plant",
+      "description": "Draw an extra tile",
+      "rarity": "uncommon",
+      "count": 0,
+      "effects": ["draw_extra"]
+    },
+    {
+      "emoji": "🌸",
+      "name": "Flower",
+      "type": "plant",
+      "description": "Combo with 🐝 for seedlings",
+      "rarity": "uncommon",
+      "count": 0,
+      "effects": ["flower_effect"]
+    },
+    {
+      "emoji": "🐝",
+      "name": "Bee",
+      "type": "plant",
+      "description": "Plant new seedling for each flower",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["bee_pollinate"]
+    },
+    {
+      "emoji": "🌵",
+      "name": "Cactus",
+      "type": "plant",
+      "description": "Only destroyed by bomb/nuke",
+      "rarity": "uncommon",
+      "count": 0,
+      "effects": ["claim_space"]
+    },
+    {
+      "emoji": "🌳",
+      "name": "Tree",
+      "type": "plant",
+      "description": "Place one extra seedling when placed",
+      "rarity": "uncommon",
+      "count": 0,
+      "effects": ["plant_seedling"]
+    },
+    {
+      "emoji": "🪓",
+      "name": "Axe",
+      "type": "plant",
+      "description": "Chop plants. Trees leave 🪵 stump",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["chop_plant"]
+    },
+    {
+      "emoji": "🍄",
+      "name": "Mushroom",
+      "type": "plant",
+      "description": "Spread mushroom at end of round",
+      "rarity": "uncommon",
+      "count": 6,
+      "effects": ["spread_mushroom"]
+    },
+    {
+      "emoji": "🪨",
+      "name": "Rock",
+      "type": "resource",
+      "description": "Claim space, hard to destroy",
+      "rarity": "common",
+      "count": 6,
+      "effects": ["claim_space"]
+    },
+    {
+      "emoji": "⛏️",
+      "name": "Pickaxe",
+      "type": "resource",
+      "description": "Destroy opponent rock or convert own to 🗿",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["pickaxe_effect"]
+    },
+    {
+      "emoji": "🗿",
+      "name": "Moai",
+      "type": "resource",
+      "description": "Cannot be destroyed",
+      "rarity": "rare",
+      "count": 0,
+      "effects": ["claim_space"]
+    },
+    {
+      "emoji": "💣",
+      "name": "Bomb",
+      "type": "destroy",
+      "description": "Destroy all stacks in 1 tile radius, claim spot",
+      "rarity": "uncommon",
+      "count": 3,
+      "effects": ["bomb_explode"]
+    },
+    {
+      "emoji": "🔫",
+      "name": "Gun",
+      "type": "destroy",
+      "description": "Destroy 1 tile stack",
+      "rarity": "common",
+      "count": 6,
+      "effects": ["destroy_single"]
+    },
+    {
+      "emoji": "🧨",
+      "name": "Dynamite",
+      "type": "destroy",
+      "description": "Destroy in 3 tile radius, claim 4 tiles",
+      "rarity": "rare",
+      "count": 2,
+      "effects": ["dynamite_explode"]
+    },
+    {
+      "emoji": "🌪️",
+      "name": "Tornado",
+      "type": "destroy",
+      "description": "Draw path of destruction to board edge",
+      "rarity": "rare",
+      "count": 2,
+      "effects": ["tornado_path"]
+    },
+    {
+      "emoji": "☢️",
+      "name": "Radioactive",
+      "type": "biohazard",
+      "description": "Convert all your 💩 to 🦠",
+      "rarity": "rare",
+      "count": 2,
+      "effects": ["poop_to_germs"]
+    },
+    {
+      "emoji": "🚽",
+      "name": "Toilet",
+      "type": "biohazard",
+      "description": "Destroy row/column, leave 💩 behind",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["toilet_flush"]
+    },
+    {
+      "emoji": "💩",
+      "name": "Poop",
+      "type": "biohazard",
+      "description": "Claim space",
+      "rarity": "common",
+      "count": 8,
+      "effects": ["claim_space"]
+    },
+    {
+      "emoji": "🪰",
+      "name": "Fly",
+      "type": "biohazard",
+      "description": "For each 💩, place additional 💩",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["spread_poop"]
+    },
+    {
+      "emoji": "🦠",
+      "name": "Germ",
+      "type": "biohazard",
+      "description": "Spread 1 additional germ for each germ",
+      "rarity": "uncommon",
+      "count": 6,
+      "effects": ["spread_germs"]
+    },
+    {
+      "emoji": "💊",
+      "name": "Pill",
+      "type": "biohazard",
+      "description": "Cure all your germs, claim as flags",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["cure_germs"]
+    },
+    {
+      "emoji": "☣️",
+      "name": "Biohazard",
+      "type": "biohazard",
+      "description": "Destroy all stacks, claim 4 flags",
+      "rarity": "very_rare",
+      "count": 1,
+      "effects": ["biohazard_nuke"]
+    },
+    {
+      "emoji": "🎲",
+      "name": "Dice",
+      "type": "special",
+      "description": "Random tile at selected spot",
+      "rarity": "uncommon",
+      "count": 4,
+      "effects": ["random_tile"]
+    }
+  ]
+}

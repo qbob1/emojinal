@@ -1,4 +1,5 @@
 import { GamePhase } from './state.js';
+import { EffectEngine } from './effects.js';
 
 export class TurnManager {
   static startTurn(state) {
@@ -30,8 +31,26 @@ export class TurnManager {
     // Update stats
     player.statistics.tilesPlaced++;
 
-    // Move to effect activation phase (skip for now, auto-proceed to draw)
+    // Auto-execute tile effects
+    state = this.executeTileEffects(state, tile, position, player.id);
+
+    // Move to draw phase
     state.phase = GamePhase.DRAW;
+
+    return state;
+  }
+
+  static executeTileEffects(state, tile, position, playerId) {
+    if (!tile.effects || tile.effects.length === 0) {
+      // Default to claim space if no effects
+      state = EffectEngine.claimSpace(state, position, playerId);
+      return state;
+    }
+
+    // Execute all effects
+    tile.effects.forEach(effectName => {
+      state = EffectEngine.executeEffect(state, effectName, position, playerId);
+    });
 
     return state;
   }
@@ -53,6 +72,12 @@ export class TurnManager {
     // Update scores
     this.updateScores(state);
 
+    // Check for end of round (all players took a turn)
+    if ((state.turnNumber + 1) % state.players.length === 0) {
+      state.roundNumber++;
+      state = this.processEndOfRound(state);
+    }
+
     // Advance turn
     state.turnNumber++;
     state.nextPlayer();
@@ -68,6 +93,42 @@ export class TurnManager {
     return state;
   }
 
+  static processEndOfRound(state) {
+    // Process zombies - they crawl to top of stacks
+    state.board.spaces.forEach(row => {
+      row.forEach(space => {
+        if (space.stack.length > 0) {
+          const hasZombie = space.stack.some(tile => tile.emoji === '🧟');
+          if (hasZombie) {
+            state = EffectEngine.zombieCrawl(state, space.position);
+          }
+        }
+      });
+    });
+
+    // Evolve plants that are on top of stacks
+    state.board.spaces.forEach(row => {
+      row.forEach(space => {
+        const topTile = space.getTopTile();
+        if (topTile && topTile.type === 'plant') {
+          state = EffectEngine.evolvePlant(state, space.position);
+        }
+      });
+    });
+
+    // Spread mushrooms
+    state.board.spaces.forEach(row => {
+      row.forEach(space => {
+        const topTile = space.getTopTile();
+        if (topTile && topTile.emoji === '🍄') {
+          state = EffectEngine.spreadMushroom(state, space.position, topTile.owner);
+        }
+      });
+    });
+
+    return state;
+  }
+
   static updateScores(state) {
     state.players.forEach(player => {
       let score = 0;
@@ -79,6 +140,7 @@ export class TurnManager {
             score += 1;
             controlledSpaces++;
 
+            // Bonus for permanent control
             if (space.flags.isPermanent) {
               score += 1;
             }
