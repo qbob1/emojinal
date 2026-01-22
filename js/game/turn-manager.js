@@ -1,0 +1,115 @@
+import { GamePhase } from './state.js';
+
+export class TurnManager {
+  static startTurn(state) {
+    state.phase = GamePhase.PLACEMENT;
+    return state;
+  }
+
+  static placeTile(state, tileIndex, position) {
+    const player = state.currentPlayer;
+    const tile = player.hand[tileIndex];
+
+    if (!tile) {
+      throw new Error('Invalid tile index');
+    }
+
+    // Validate placement
+    const validation = this.validatePlacement(state, tile, position);
+    if (!validation.valid) {
+      throw new Error(validation.error);
+    }
+
+    // Place tile on board
+    const space = state.board.getSpace(position.x, position.y);
+    space.addTile(tile);
+
+    // Remove from hand
+    player.removeFromHand(tileIndex);
+
+    // Update stats
+    player.statistics.tilesPlaced++;
+
+    // Move to effect activation phase (skip for now, auto-proceed to draw)
+    state.phase = GamePhase.DRAW;
+
+    return state;
+  }
+
+  static drawTile(state) {
+    const player = state.currentPlayer;
+
+    if (state.deck.length > 0 && player.hand.length < state.config.maxHandSize) {
+      const tile = state.deck.pop();
+      tile.owner = player.id;
+      player.addToHand(tile);
+    }
+
+    state.phase = GamePhase.SCORING;
+    return state;
+  }
+
+  static endTurn(state) {
+    // Update scores
+    this.updateScores(state);
+
+    // Advance turn
+    state.turnNumber++;
+    state.nextPlayer();
+
+    // Check for game over
+    if (state.turnNumber >= state.config.maxTurns) {
+      state.phase = GamePhase.GAME_OVER;
+      this.calculateFinalScores(state);
+    } else {
+      state.phase = GamePhase.PLACEMENT;
+    }
+
+    return state;
+  }
+
+  static updateScores(state) {
+    state.players.forEach(player => {
+      let score = 0;
+      let controlledSpaces = 0;
+
+      state.board.spaces.forEach(row => {
+        row.forEach(space => {
+          if (space.controlledBy === player.id && !space.flags.isNegated) {
+            score += 1;
+            controlledSpaces++;
+
+            if (space.flags.isPermanent) {
+              score += 1;
+            }
+          }
+        });
+      });
+
+      player.score = score;
+      player.controlledSpaces = controlledSpaces;
+      player.statistics.spacesControlled = controlledSpaces;
+    });
+  }
+
+  static calculateFinalScores(state) {
+    // Add end game bonus for most controlled spaces
+    const maxSpaces = Math.max(...state.players.map(p => p.controlledSpaces));
+    const winners = state.players.filter(p => p.controlledSpaces === maxSpaces);
+
+    const bonusPerWinner = state.config.endGameBonus / winners.length;
+    winners.forEach(player => {
+      player.score += bonusPerWinner;
+    });
+  }
+
+  static validatePlacement(state, tile, position) {
+    const space = state.board.getSpace(position.x, position.y);
+    if (!space) {
+      return { valid: false, error: 'Invalid position' };
+    }
+
+    // For now, allow placement anywhere
+    return { valid: true };
+  }
+}
