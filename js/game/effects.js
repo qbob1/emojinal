@@ -256,24 +256,27 @@ export class EffectEngine {
 
   // ========== PLANT EFFECTS ==========
 
-  static evolvePlant(state, position) {
+  static evolvePlant(state, position, choice = null) {
     const space = state.board.getSpace(position.x, position.y);
     const tile = space.getTopTile();
 
     if (!tile || tile.type !== 'plant') return state;
 
-    tile.metadata.turnCount++;
+    // Seedling always evolves to herb
+    if (tile.emoji === '🌱') {
+      tile.emoji = '🌿';
+      tile.metadata.evolutionStage = '🌿';
+      return state;
+    }
 
-    // Check if ready to evolve
-    const evolutionMap = {
-      '🌱': { turns: 1, next: '🌿' }
-    };
-
-    const evolution = evolutionMap[tile.emoji];
-    if (evolution && tile.metadata.turnCount >= evolution.turns) {
-      tile.emoji = evolution.next;
-      tile.metadata.turnCount = 0;
-      tile.metadata.evolutionStage = evolution.next;
+    // Herb evolves based on user choice
+    if (tile.emoji === '🌿' && choice) {
+      const validChoices = ['🍀', '🌸', '🌵', '🌳'];
+      if (validChoices.includes(choice)) {
+        tile.emoji = choice;
+        tile.metadata.evolutionStage = choice;
+      }
+      return state;
     }
 
     return state;

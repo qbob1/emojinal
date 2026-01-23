@@ -82,6 +82,34 @@ class GameApp extends HTMLElement {
             display: flex;
             gap: 1rem;
             justify-content: center;
+            flex-wrap: wrap;
+          }
+
+          .evolution-choice {
+            padding: 1rem;
+            background: linear-gradient(135deg, #2a4a2a 0%, #1e3a1e 100%);
+            border: 2px solid #4a8a4a;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 120px;
+          }
+
+          .evolution-choice:hover {
+            transform: translateY(-4px);
+            border-color: #6aca6a;
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+          }
+
+          .evolution-emoji {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 0.5rem;
+          }
+
+          .evolution-name {
+            font-size: 0.9rem;
+            color: #b0e0b0;
           }
 
           .effect-button {
@@ -112,6 +140,7 @@ class GameApp extends HTMLElement {
           }
         </style>
         ${this.pendingEffect ? this.renderEffectPrompt() : ''}
+        ${this.state && this.state.pendingEvolutions && this.state.pendingEvolutions.length > 0 ? this.renderEvolutionPrompt() : ''}
         <game-status id="status"></game-status>
         <game-board id="board"></game-board>
         <score-panel id="score"></score-panel>
@@ -206,6 +235,12 @@ class GameApp extends HTMLElement {
       // End turn
       this.state = TurnManager.endTurn(this.state);
 
+      // Check for pending evolutions
+      if (this.state.pendingEvolutions && this.state.pendingEvolutions.length > 0) {
+        this.updateUI();
+        return;
+      }
+
       this.updateUI();
 
       // Check for game over
@@ -235,6 +270,12 @@ class GameApp extends HTMLElement {
     this.state = TurnManager.drawTile(this.state);
     this.state = TurnManager.endTurn(this.state);
 
+    // Check for pending evolutions
+    if (this.state.pendingEvolutions && this.state.pendingEvolutions.length > 0) {
+      this.updateUI();
+      return;
+    }
+
     this.updateUI();
 
     if (this.state.phase === GamePhase.GAME_OVER) {
@@ -259,6 +300,39 @@ class GameApp extends HTMLElement {
     // Continue with turn
     this.state = TurnManager.drawTile(this.state);
     this.state = TurnManager.endTurn(this.state);
+
+    // Check for pending evolutions
+    if (this.state.pendingEvolutions && this.state.pendingEvolutions.length > 0) {
+      this.updateUI();
+      return;
+    }
+
+    this.updateUI();
+
+    if (this.state.phase === GamePhase.GAME_OVER) {
+      setTimeout(() => this.showGameOver(), 500);
+    }
+  }
+
+  handleEvolutionChoice(choice) {
+    if (!this.state.pendingEvolutions || this.state.pendingEvolutions.length === 0) return;
+
+    const evolution = this.state.pendingEvolutions[0];
+
+    // Apply evolution
+    this.state = EffectEngine.evolvePlant(this.state, evolution.position, choice);
+
+    // Remove from pending list
+    this.state.pendingEvolutions.shift();
+
+    // If more evolutions pending, show next one
+    if (this.state.pendingEvolutions.length > 0) {
+      this.updateUI();
+      return;
+    }
+
+    // All evolutions done, clear and check for game over
+    delete this.state.pendingEvolutions;
 
     this.updateUI();
 
@@ -303,6 +377,60 @@ class GameApp extends HTMLElement {
     return '';
   }
 
+  renderEvolutionPrompt() {
+    if (!this.state || !this.state.pendingEvolutions || this.state.pendingEvolutions.length === 0) {
+      return '';
+    }
+
+    const evolution = this.state.pendingEvolutions[0];
+    const playerName = this.state.players.find(p => p.id === evolution.owner)?.name || 'Player';
+
+    // Seedling evolution (automatic to herb)
+    if (evolution.tile.emoji === '🌱') {
+      return `
+        <div class="prompt-overlay"></div>
+        <div class="effect-prompt">
+          <h3>🌱 → 🌿 Plant Evolution</h3>
+          <p>${playerName}'s seedling grew into an herb!</p>
+          <div class="effect-buttons">
+            <button class="effect-button" id="evolve-auto">Continue</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Herb evolution (user choice)
+    if (evolution.tile.emoji === '🌿') {
+      return `
+        <div class="prompt-overlay"></div>
+        <div class="effect-prompt">
+          <h3>🌿 Plant Evolution</h3>
+          <p>${playerName}, choose how your herb evolves:</p>
+          <div class="effect-buttons">
+            <div class="evolution-choice" data-choice="🍀">
+              <span class="evolution-emoji">🍀</span>
+              <span class="evolution-name">Clover</span>
+            </div>
+            <div class="evolution-choice" data-choice="🌸">
+              <span class="evolution-emoji">🌸</span>
+              <span class="evolution-name">Flower</span>
+            </div>
+            <div class="evolution-choice" data-choice="🌵">
+              <span class="evolution-emoji">🌵</span>
+              <span class="evolution-name">Cactus</span>
+            </div>
+            <div class="evolution-choice" data-choice="🌳">
+              <span class="evolution-emoji">🌳</span>
+              <span class="evolution-name">Tree</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return '';
+  }
+
   updateUI() {
     if (!this.state) return;
 
@@ -326,6 +454,30 @@ class GameApp extends HTMLElement {
       }
       if (flushColumnBtn) {
         flushColumnBtn.addEventListener('click', () => this.handleEffectDirectionInput(false));
+      }
+    }
+
+    // Attach evolution prompt button listeners
+    if (this.state && this.state.pendingEvolutions && this.state.pendingEvolutions.length > 0) {
+      const evolution = this.state.pendingEvolutions[0];
+
+      // Auto-evolution (seedling)
+      if (evolution.tile.emoji === '🌱') {
+        const autoBtn = this.shadowRoot.getElementById('evolve-auto');
+        if (autoBtn) {
+          autoBtn.addEventListener('click', () => this.handleEvolutionChoice('🌿'));
+        }
+      }
+
+      // Choice evolution (herb)
+      if (evolution.tile.emoji === '🌿') {
+        const choices = this.shadowRoot.querySelectorAll('.evolution-choice');
+        choices.forEach(choice => {
+          choice.addEventListener('click', () => {
+            const selectedChoice = choice.getAttribute('data-choice');
+            this.handleEvolutionChoice(selectedChoice);
+          });
+        });
       }
     }
   }

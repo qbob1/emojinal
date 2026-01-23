@@ -122,15 +122,28 @@ export class TurnManager {
       });
     });
 
-    // Evolve plants that are on top of stacks
+    // Collect plants that can evolve (for user choice)
+    const evolvablePlants = [];
     state.board.spaces.forEach(row => {
       row.forEach(space => {
         const topTile = space.getTopTile();
         if (topTile && topTile.type === 'plant') {
-          state = EffectEngine.evolvePlant(state, space.position);
+          // Check if plant can evolve
+          if (topTile.emoji === '🌱' || topTile.emoji === '🌿') {
+            evolvablePlants.push({
+              position: space.position,
+              tile: topTile,
+              owner: topTile.owner
+            });
+          }
         }
       });
     });
+
+    // Store pending evolutions for user interaction
+    if (evolvablePlants.length > 0) {
+      state.pendingEvolutions = evolvablePlants;
+    }
 
     // Spread mushrooms
     state.board.spaces.forEach(row => {
