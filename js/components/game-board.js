@@ -75,9 +75,9 @@ class GameBoard extends HTMLElement {
           background: #0f3460;
           padding: 8px;
           border-radius: 8px;
-          width: min(600px, 90vw);
-          height: min(600px, 90vw);
-          max-width: 100%;
+          max-width: min(600px, 90vw);
+          max-height: min(600px, 70vh);
+          aspect-ratio: 1;
         }
 
         .grid-cell {
