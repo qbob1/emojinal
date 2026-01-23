@@ -351,6 +351,23 @@ class GameApp extends HTMLElement {
   handleEffectPositionInput(x, y) {
     if (!this.pendingEffect) return;
 
+    // Validate mushroom placement - must be on empty space
+    if (this.pendingEffect.tile.emoji === '🍄') {
+      const targetSpace = this.state.board.getSpace(x, y);
+      if (targetSpace && targetSpace.stack.length > 0) {
+        // Invalid placement - space is occupied, don't end turn
+        alert('Mushrooms can only spread to empty spaces! Click on an empty space.');
+        return;
+      }
+    }
+
+    // Validate germ placement (can be anywhere)
+    const targetSpace = this.state.board.getSpace(x, y);
+    if (!targetSpace) {
+      // Out of bounds
+      return;
+    }
+
     // Execute the effect with user's position choice
     this.state = EffectEngine.executeEffect(
       this.state,
