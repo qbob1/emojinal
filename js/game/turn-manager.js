@@ -31,11 +31,15 @@ export class TurnManager {
     // Update stats
     player.statistics.tilesPlaced++;
 
-    // Auto-execute tile effects
-    state = this.executeTileEffects(state, tile, position, player.id);
+    // Auto-execute tile effects (unless tile requires user input)
+    if (!tile.requiresInput) {
+      state = this.executeTileEffects(state, tile, position, player.id);
+    }
 
-    // Move to draw phase
-    state.phase = GamePhase.DRAW;
+    // Move to draw phase (or stay in placement if awaiting input)
+    if (!tile.requiresInput) {
+      state.phase = GamePhase.DRAW;
+    }
 
     return state;
   }

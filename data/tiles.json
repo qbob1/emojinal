@@ -339,7 +339,9 @@
       "description": "Destroy row/column, leave 💩 behind",
       "rarity": "uncommon",
       "count": 4,
-      "effects": ["toilet_flush"]
+      "effects": ["toilet_flush"],
+      "requiresInput": true,
+      "inputType": "direction"
     },
     {
       "emoji": "💩",
@@ -366,7 +368,9 @@
       "description": "Spread 1 additional germ for each germ",
       "rarity": "uncommon",
       "count": 6,
-      "effects": ["spread_germs"]
+      "effects": ["spread_germs"],
+      "requiresInput": true,
+      "inputType": "position"
     },
     {
       "emoji": "💊",

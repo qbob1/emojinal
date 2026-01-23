@@ -479,7 +479,7 @@ export class EffectEngine {
     return state;
   }
 
-  static spreadGerms(state, position, playerId) {
+  static spreadGerms(state, position, playerId, targetPosition = null) {
     // Count player's germs
     let germCount = 0;
 
@@ -493,7 +493,17 @@ export class EffectEngine {
       });
     });
 
-    // Spread germs adjacently
+    // If target position is provided (user selected), place germ there
+    if (targetPosition) {
+      const space = state.board.getSpace(targetPosition.x, targetPosition.y);
+      if (space) {
+        const germ = { emoji: '🦠', owner: playerId, type: 'biohazard', effects: [], metadata: {} };
+        space.addTile(germ);
+      }
+      return state;
+    }
+
+    // Otherwise use automatic spreading (for non-interactive mode)
     const directions = [
       {dx: 0, dy: -1}, {dx: 1, dy: 0}, {dx: 0, dy: 1}, {dx: -1, dy: 0}
     ];
@@ -734,7 +744,7 @@ export class EffectEngine {
         return this.spreadPoop(state, position, playerId);
 
       case 'spread_germs':
-        return this.spreadGerms(state, position, playerId);
+        return this.spreadGerms(state, position, playerId, params.targetPosition);
 
       case 'cure_germs':
         return this.cureGerms(state, playerId);
