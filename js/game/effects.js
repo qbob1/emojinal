@@ -320,20 +320,34 @@ export class EffectEngine {
     return state;
   }
 
-  static spreadMushroom(state, position, playerId) {
-    // Find adjacent spaces
+  static spreadMushroom(state, position, playerId, targetPosition = null) {
+    // If target position is provided (user selected), place mushroom there if empty
+    if (targetPosition) {
+      const space = state.board.getSpace(targetPosition.x, targetPosition.y);
+      if (space && space.stack.length === 0) {
+        const mushroom = { emoji: '🍄', owner: playerId, type: 'plant', effects: [], metadata: {} };
+        space.addTile(mushroom);
+      }
+      return state;
+    }
+
+    // Otherwise use automatic spreading (for end-of-round)
+    // Find adjacent empty spaces
     const directions = [
       {dx: 0, dy: -1}, {dx: 1, dy: 0}, {dx: 0, dy: 1}, {dx: -1, dy: 0}
     ];
 
-    const dir = directions[Math.floor(Math.random() * directions.length)];
-    const x = position.x + dir.dx;
-    const y = position.y + dir.dy;
-    const space = state.board.getSpace(x, y);
+    // Try to find an empty adjacent space
+    for (const dir of directions) {
+      const x = position.x + dir.dx;
+      const y = position.y + dir.dy;
+      const space = state.board.getSpace(x, y);
 
-    if (space) {
-      const mushroom = { emoji: '🍄', owner: playerId, type: 'plant', effects: [], metadata: {} };
-      space.addTile(mushroom);
+      if (space && space.stack.length === 0) {
+        const mushroom = { emoji: '🍄', owner: playerId, type: 'plant', effects: [], metadata: {} };
+        space.addTile(mushroom);
+        return state;
+      }
     }
 
     return state;
@@ -440,6 +454,20 @@ export class EffectEngine {
       const poop = { emoji: '💩', owner: playerId, type: 'biohazard', effects: [], metadata: {} };
       space.addTile(poop);
     });
+
+    // Transform the toilet tile itself into a poop
+    const centerSpace = state.board.getSpace(position.x, position.y);
+    if (centerSpace) {
+      // Find and replace the toilet tile
+      for (let i = 0; i < centerSpace.stack.length; i++) {
+        if (centerSpace.stack[i].emoji === '🚽') {
+          centerSpace.stack[i].emoji = '💩';
+          centerSpace.stack[i].type = 'biohazard';
+          centerSpace.stack[i].effects = [];
+          break;
+        }
+      }
+    }
 
     return state;
   }
@@ -723,7 +751,7 @@ export class EffectEngine {
         return this.chopPlant(state, position, playerId);
 
       case 'spread_mushroom':
-        return this.spreadMushroom(state, position, playerId);
+        return this.spreadMushroom(state, position, playerId, params.targetPosition);
 
       case 'bee_pollinate':
         return this.beePollinate(state, position, playerId);

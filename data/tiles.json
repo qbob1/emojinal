@@ -258,7 +258,9 @@
       "description": "Spread mushroom at end of round",
       "rarity": "uncommon",
       "count": 6,
-      "effects": ["spread_mushroom"]
+      "effects": ["spread_mushroom"],
+      "requiresInput": true,
+      "inputType": "position"
     },
     {
       "emoji": "🪨",

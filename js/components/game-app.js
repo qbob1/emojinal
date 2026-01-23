@@ -283,11 +283,19 @@ class GameApp extends HTMLElement {
         </div>
       `;
     } else if (this.pendingEffect.inputType === 'position') {
+      const tileEmoji = this.pendingEffect.tile.emoji;
+      const tilePrompts = {
+        '🦠': { title: '🦠 Spread Germ', message: 'Click on the board to place a germ' },
+        '🍄': { title: '🍄 Spread Mushroom', message: 'Click on an empty space to place a mushroom' }
+      };
+
+      const prompt = tilePrompts[tileEmoji] || { title: 'Place Tile', message: 'Click on the board' };
+
       return `
         <div class="prompt-overlay"></div>
         <div class="effect-prompt">
-          <h3>🦠 Spread Germ</h3>
-          <p>Click on the board to place a germ</p>
+          <h3>${prompt.title}</h3>
+          <p>${prompt.message}</p>
         </div>
       `;
     }
