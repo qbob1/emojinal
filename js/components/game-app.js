@@ -138,6 +138,71 @@ class GameApp extends HTMLElement {
             background: rgba(0, 0, 0, 0.7);
             z-index: 999;
           }
+
+          @media (max-width: 768px) {
+            .effect-prompt {
+              width: 90vw;
+              max-width: 90vw;
+              min-width: unset;
+              padding: 1.5rem 1rem;
+              max-height: 90vh;
+              overflow-y: auto;
+            }
+
+            .effect-prompt h3 {
+              font-size: 1.2rem;
+              margin-bottom: 0.75rem;
+            }
+
+            .effect-prompt p {
+              font-size: 0.9rem;
+              margin-bottom: 1rem;
+            }
+
+            .effect-buttons {
+              gap: 0.75rem;
+            }
+
+            .effect-button {
+              padding: 0.75rem 1rem;
+              font-size: 0.9rem;
+              width: 100%;
+            }
+
+            .evolution-choice {
+              padding: 0.75rem;
+              min-width: 100px;
+              flex: 1 1 45%;
+            }
+
+            .evolution-emoji {
+              font-size: 2rem;
+              margin-bottom: 0.25rem;
+            }
+
+            .evolution-name {
+              font-size: 0.8rem;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .effect-prompt {
+              padding: 1rem;
+            }
+
+            .effect-prompt h3 {
+              font-size: 1rem;
+            }
+
+            .effect-prompt p {
+              font-size: 0.85rem;
+            }
+
+            .evolution-choice {
+              flex: 1 1 100%;
+              min-width: unset;
+            }
+          }
         </style>
         ${this.pendingEffect ? this.renderEffectPrompt() : ''}
         ${this.state && this.state.pendingEvolutions && this.state.pendingEvolutions.length > 0 ? this.renderEvolutionPrompt() : ''}
