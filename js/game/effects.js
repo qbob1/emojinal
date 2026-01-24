@@ -677,6 +677,54 @@ export class EffectEngine {
     return state;
   }
 
+  static tornadoPath(state, position, playerId, direction) {
+    if (!direction) return state;
+
+    // Direction vectors for all 8 directions
+    const directionVectors = {
+      'up': { dx: 0, dy: -1 },
+      'down': { dx: 0, dy: 1 },
+      'left': { dx: -1, dy: 0 },
+      'right': { dx: 1, dy: 0 },
+      'up-left': { dx: -1, dy: -1 },
+      'up-right': { dx: 1, dy: -1 },
+      'down-left': { dx: -1, dy: 1 },
+      'down-right': { dx: 1, dy: 1 }
+    };
+
+    const vector = directionVectors[direction];
+    if (!vector) return state;
+
+    const destroyed = [];
+    let currentX = position.x + vector.dx;
+    let currentY = position.y + vector.dy;
+
+    // Destroy tiles in path until we hit the edge
+    while (true) {
+      const space = state.board.getSpace(currentX, currentY);
+      if (!space) break; // Hit edge of board
+
+      // Destroy this space
+      state = this.destroyStack(state, { x: currentX, y: currentY });
+      destroyed.push({ x: currentX, y: currentY });
+
+      // Move to next position
+      currentX += vector.dx;
+      currentY += vector.dy;
+    }
+
+    // Add explosion animation
+    if (!state.animations) state.animations = [];
+    state.animations.push({
+      type: 'explosion',
+      position: position,
+      radius: 2,
+      timestamp: Date.now()
+    });
+
+    return state;
+  }
+
   // ========== EFFECT EXECUTOR ==========
 
   static executeEffect(state, effectName, position, playerId, params = {}) {
@@ -788,6 +836,9 @@ export class EffectEngine {
 
       case 'random_tile':
         return this.randomTile(state, position, playerId);
+
+      case 'tornado_path':
+        return this.tornadoPath(state, position, playerId, params.direction);
 
       default:
         console.warn(`Unknown effect: ${effectName}`);

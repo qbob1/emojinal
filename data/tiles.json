@@ -323,7 +323,9 @@
       "description": "Draw path of destruction to board edge",
       "rarity": "rare",
       "count": 2,
-      "effects": ["tornado_path"]
+      "effects": ["tornado_path"],
+      "requiresInput": true,
+      "inputType": "tornado-direction"
     },
     {
       "emoji": "☢️",

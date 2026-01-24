@@ -348,6 +348,37 @@ class GameApp extends HTMLElement {
     }
   }
 
+  handleTornadoDirectionInput(direction) {
+    if (!this.pendingEffect) return;
+
+    // Execute the tornado effect with user's direction choice
+    this.state = EffectEngine.executeEffect(
+      this.state,
+      this.pendingEffect.tile.effects[0],
+      this.pendingEffect.position,
+      this.pendingEffect.playerId,
+      { direction }
+    );
+
+    this.pendingEffect = null;
+
+    // Continue with turn
+    this.state = TurnManager.drawTile(this.state);
+    this.state = TurnManager.endTurn(this.state);
+
+    // Check for pending evolutions
+    if (this.state.pendingEvolutions && this.state.pendingEvolutions.length > 0) {
+      this.updateUI();
+      return;
+    }
+
+    this.updateUI();
+
+    if (this.state.phase === GamePhase.GAME_OVER) {
+      setTimeout(() => this.showGameOver(), 500);
+    }
+  }
+
   handleEffectPositionInput(x, y) {
     if (!this.pendingEffect) return;
 
@@ -435,6 +466,25 @@ class GameApp extends HTMLElement {
           <div class="effect-buttons">
             <button class="effect-button" id="flush-row">Flush Row ↔️</button>
             <button class="effect-button" id="flush-column">Flush Column ↕️</button>
+          </div>
+        </div>
+      `;
+    } else if (this.pendingEffect.inputType === 'tornado-direction') {
+      return `
+        <div class="prompt-overlay"></div>
+        <div class="effect-prompt">
+          <h3>🌪️ Tornado Path</h3>
+          <p>Choose which direction the tornado travels:</p>
+          <div class="effect-buttons" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; max-width: 300px; margin: 0 auto;">
+            <button class="effect-button" data-direction="up-left" style="padding: 0.75rem;">↖️</button>
+            <button class="effect-button" data-direction="up" style="padding: 0.75rem;">⬆️</button>
+            <button class="effect-button" data-direction="up-right" style="padding: 0.75rem;">↗️</button>
+            <button class="effect-button" data-direction="left" style="padding: 0.75rem;">⬅️</button>
+            <button class="effect-button" style="padding: 0.75rem; opacity: 0.3; cursor: default;">🌪️</button>
+            <button class="effect-button" data-direction="right" style="padding: 0.75rem;">➡️</button>
+            <button class="effect-button" data-direction="down-left" style="padding: 0.75rem;">↙️</button>
+            <button class="effect-button" data-direction="down" style="padding: 0.75rem;">⬇️</button>
+            <button class="effect-button" data-direction="down-right" style="padding: 0.75rem;">↘️</button>
           </div>
         </div>
       `;
@@ -537,6 +587,17 @@ class GameApp extends HTMLElement {
       if (flushColumnBtn) {
         flushColumnBtn.addEventListener('click', () => this.handleEffectDirectionInput(false));
       }
+    }
+
+    // Attach tornado direction button listeners
+    if (this.pendingEffect && this.pendingEffect.inputType === 'tornado-direction') {
+      const directionButtons = this.shadowRoot.querySelectorAll('[data-direction]');
+      directionButtons.forEach(button => {
+        const direction = button.getAttribute('data-direction');
+        if (direction) {
+          button.addEventListener('click', () => this.handleTornadoDirectionInput(direction));
+        }
+      });
     }
 
     // Attach evolution prompt button listeners
