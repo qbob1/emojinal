@@ -91,7 +91,11 @@ export class TurnManager {
       state.phase = GamePhase.GAME_OVER;
       this.calculateFinalScores(state);
     } else {
-      state.phase = GamePhase.PLACEMENT;
+      // If there are pending evolutions, don't allow placement yet
+      // The phase will stay as SCORING until evolutions are resolved
+      if (!state.pendingEvolutions || state.pendingEvolutions.length === 0) {
+        state.phase = GamePhase.PLACEMENT;
+      }
     }
 
     return state;

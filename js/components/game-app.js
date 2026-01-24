@@ -444,8 +444,13 @@ class GameApp extends HTMLElement {
       return;
     }
 
-    // All evolutions done, clear and check for game over
+    // All evolutions done, clear and allow placement
     delete this.state.pendingEvolutions;
+
+    // Set phase to placement so the current player can place their tile
+    if (this.state.phase !== GamePhase.GAME_OVER) {
+      this.state.phase = GamePhase.PLACEMENT;
+    }
 
     this.updateUI();
 

@@ -398,17 +398,14 @@ export class EffectEngine {
 
     if (!topTile) return state;
 
-    if (topTile.emoji === '🪨') {
-      if (topTile.owner === playerId) {
-        // Convert own rock to moai
-        space.removeTile();
-        const moai = { emoji: '🗿', owner: playerId, type: 'resource', effects: [], metadata: { isPermanent: true } };
-        space.addTile(moai);
-      } else {
-        // Destroy opponent rock
-        space.removeTile();
-        state = this.claimSpace(state, position, playerId);
-      }
+    // If it's your own rock, evolve it to monument (moai)
+    if (topTile.emoji === '🪨' && topTile.owner === playerId) {
+      space.removeTile();
+      const moai = { emoji: '🗿', owner: playerId, type: 'resource', effects: [], metadata: { isPermanent: true } };
+      space.addTile(moai);
+    } else {
+      // For any other tile (including opponent rocks), neutralize the space
+      state = this.negateSpace(state, position, playerId);
     }
 
     return state;
