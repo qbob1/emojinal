@@ -356,6 +356,29 @@ export class EffectEngine {
     return state;
   }
 
+  static autoSpreadGerm(state, position, playerId) {
+    // Automatic spreading at end of round (like mushrooms)
+    // Find adjacent empty spaces
+    const directions = [
+      {dx: 0, dy: -1}, {dx: 1, dy: 0}, {dx: 0, dy: 1}, {dx: -1, dy: 0}
+    ];
+
+    // Try to find an empty adjacent space
+    for (const dir of directions) {
+      const x = position.x + dir.dx;
+      const y = position.y + dir.dy;
+      const space = state.board.getSpace(x, y);
+
+      if (space && space.stack.length === 0) {
+        const germ = { emoji: '🦠', owner: playerId, type: 'biohazard', effects: [], metadata: {} };
+        space.addTile(germ);
+        return state;
+      }
+    }
+
+    return state;
+  }
+
   static beePollinate(state, position, playerId) {
     // Count flowers on board
     let flowerCount = 0;

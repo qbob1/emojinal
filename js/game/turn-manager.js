@@ -159,6 +159,16 @@ export class TurnManager {
       });
     });
 
+    // Spread germs (like mushrooms, each germ spreads to adjacent empty space)
+    state.board.spaces.forEach(row => {
+      row.forEach(space => {
+        const topTile = space.getTopTile();
+        if (topTile && topTile.emoji === '🦠') {
+          state = EffectEngine.autoSpreadGerm(state, space.position, topTile.owner);
+        }
+      });
+    });
+
     return state;
   }
 
