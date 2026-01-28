@@ -27,10 +27,10 @@ class GameApp extends HTMLElement {
           :host {
             display: grid;
             grid-template-areas:
-              "header header"
-              "board  sidebar"
-              "hand   hand";
-            grid-template-columns: 1fr 300px;
+              "header header header"
+              ". board sidebar"
+              "hand hand hand";
+            grid-template-columns: 1fr auto 300px;
             grid-template-rows: auto 1fr auto;
             gap: 1rem;
             padding: 1rem;
