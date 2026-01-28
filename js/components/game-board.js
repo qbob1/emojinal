@@ -75,9 +75,8 @@ class GameBoard extends HTMLElement {
           background: #0f3460;
           padding: 8px;
           border-radius: 8px;
-          max-width: min(600px, 90vw);
-          max-height: min(600px, 70vh);
-          aspect-ratio: 1;
+          width: 600px;
+          height: 600px;
         }
 
         .grid-cell {
@@ -86,7 +85,7 @@ class GameBoard extends HTMLElement {
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: clamp(0.8rem, calc(90vw / ${gridSize} / 2), 2.5rem);
+          font-size: clamp(1.2rem, calc(600px / ${gridSize} * 0.6), 2.5rem);
           cursor: pointer;
           position: relative;
           border-radius: 4px;
@@ -123,6 +122,7 @@ class GameBoard extends HTMLElement {
           .grid-cell {
             border-width: 1px;
             border-radius: 2px;
+            font-size: clamp(0.8rem, calc(95vw / ${gridSize} / 2), 2.5rem);
           }
 
           .grid-cell:hover {
